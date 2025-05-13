@@ -11,6 +11,7 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
 
 intents = discord.Intents.default()
+intents.messages = True
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
@@ -41,6 +42,10 @@ async def notify_time():
 
 keep_alive.keep_alive()
 bot.run(TOKEN)
+
+@bot.event
+async def on_message(message):
+    await bot.process_commands(message)
 
 @bot.command()
 async def 테스트(ctx):

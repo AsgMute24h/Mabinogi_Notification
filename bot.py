@@ -41,6 +41,13 @@ async def notify_time():
 
 @bot.event
 async def on_message(message):
+    # 봇 자신의 메시지는 무시
+    if message.author == bot.user:
+        return
+
+    # 여기에 추가적인 메시지 처리 로직을 넣을 수 있습니다
+
+    # 명령어를 처리
     await bot.process_commands(message)
 
 @bot.command(name="test", aliases=["테스트"])

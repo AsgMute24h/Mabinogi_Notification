@@ -19,46 +19,56 @@ korea = pytz.timezone('Asia/Seoul')
 
 @bot.event
 async def on_ready():
-    print(f'{bot.user} is online')
+    print(f"[봇 온라인] {bot.user} is ready.")
+    print(f"[환경 변수] TOKEN 길이: {len(TOKEN)}, CHANNEL_ID: {CHANNEL_ID}")
     notify_time.start()
 
 @tasks.loop(minutes=1)
 async def notify_time():
     now = datetime.now(korea)
     hour = now.hour
-    if now.minute == 55:
+    minute = now.minute
+    print(f"[⏰ 시간 체크] 현재 시각: {hour}:{minute:02d}")
+
+    if minute == 55:
+        print("[✅ 알림 조건 만족: 55분 트리거 발동]")
+
         channel = bot.get_channel(CHANNEL_ID)
         if not channel:
+            print("[❌ 오류] 채널을 찾을 수 없음.")
             return
+        print(f"[📢 채널 확인 완료] 채널 이름: {channel.name}")
 
         group_a = {3, 6, 9, 12, 15, 18, 21, 0}
         group_b = {12, 18, 20, 22}
 
         if hour in group_a:
-            await channel.send("@everyone 불길한 소환의 결계가 나타난 것 같다.")
+            print(f"[🔥 group A] {hour}시에 맞는 메시지 전송 중...")
+            await channel.send(f"@everyone 🔥 5분 뒤 {hour}시! 불길한 소환의 결계가 나타날 것 같습니다.")
+
         if hour in group_b:
-            await channel.send(f"@everyone 필드 보스가 출현했습니다.")
-
-@bot.event
-async def on_message(message):
-    # 봇 자신의 메시지는 무시
-    if message.author == bot.user:
-        return
-
-    # 여기에 추가적인 메시지 처리 로직을 넣을 수 있습니다
-
-    # 명령어를 처리
-    await bot.process_commands(message)
+            print(f"[⚔️ group B] {hour}시에 맞는 메시지 전송 중...")
+            await channel.send(f"@everyone ⚔️ 5분 뒤 {hour}시! 필드 보스가 출현할 것으로 보입니다.")
 
 @bot.command(name="test", aliases=["테스트"])
 async def test(ctx):
+    print(f"[🧪 명령 호출됨] 채널 ID: {ctx.channel.id}, 기대값: {CHANNEL_ID}")
     if ctx.channel.id == CHANNEL_ID:
         await ctx.send("@everyone [테스트 메시지] 지금은 테스트 중입니다!")
+        print("[✅ 메시지 전송 성공]")
+    else:
+        await ctx.send("⚠️ 이 채널에서는 테스트 명령이 허용되지 않습니다.")
+        print("[⚠️ 테스트 명령 채널 ID 불일치]")
+
+@bot.event
+async def on_message(message):
+    await bot.process_commands(message)
 
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
         await ctx.send("⚠️ 해당 명령어를 찾을 수 없습니다.")
+        print(f"[🚫 명령어 없음] '{ctx.message.content}'")
     else:
         raise error
 

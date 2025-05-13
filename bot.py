@@ -41,3 +41,8 @@ async def notify_time():
 
 keep_alive.keep_alive()
 bot.run(TOKEN)
+
+@bot.command()
+async def 테스트(ctx):
+    if ctx.channel.id == CHANNEL_ID:
+        await ctx.send("@everyone [테스트 메시지] 지금은 테스트 중입니다!")

@@ -40,16 +40,16 @@ async def notify_time():
             return
         print(f"[📢 채널 확인 완료] 채널 이름: {channel.name}")
 
-        group_a = {3, 6, 9, 12, 15, 18, 21, 0}
+        group_a = set(range(24))
         group_b = {12, 18, 20, 22}
 
         if target_hour in group_a:
             print(f"[🔥 group A] {target_hour}시 알림 예정")
-            await channel.send(f"@everyone 🔥 5분 뒤 {target_hour}시! 불길한 소환의 결계가 나타날 것 같습니다.")
+            await channel.send(f"@everyone 🔥 5분 뒤 {target_hour}시, 불길한 소환의 결계가 나타납니다.")
 
         if target_hour in group_b:
             print(f"[⚔️ group B] {target_hour}시 알림 예정")
-            await channel.send(f"@everyone ⚔️ 5분 뒤 {target_hour}시! 필드 보스가 출현할 것으로 보입니다.")
+            await channel.send(f"@everyone ⚔️ 5분 뒤 {target_hour}시, 필드 보스가 출현합니다.")
 
 @bot.command(name="test", aliases=["테스트"])
 async def test(ctx):

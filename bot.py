@@ -93,6 +93,23 @@ async def 목록(interaction: discord.Interaction):
         char_list = "\n".join(f"- {name}" for name in user_data[uid])
         await interaction.response.send_message(f"📋 현재 등록된 캐릭터 목록:\n{char_list}", ephemeral=True)
 
+@tree.command(name="숙제", description="숙제 현황을 표시합니다.")
+async def 숙제(interaction: discord.Interaction):
+    uid = interaction.user.id
+    if uid not in user_data or not user_data[uid]:
+        await interaction.response.send_message("❌ 등록된 캐릭터가 없습니다. `/추가` 명령어로 캐릭터를 먼저 등록하세요.", ephemeral=True)
+        return
+
+    embed = discord.Embed(title="📋 숙제 현황", description="버튼을 눌러 완료 여부를 관리하세요.")
+    for name in user_data[uid]:
+        embed.add_field(name=f"ㅇ {name}", value="✅ 요일 던전, ❌ 심층 던전", inline=False)  # 예시 값
+
+    view = View()
+    view.add_item(Button(label="요일 던전 완료", style=discord.ButtonStyle.green))  # 예시 버튼
+    view.add_item(Button(label="심층 던전 완료", style=discord.ButtonStyle.gray))
+
+    await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+
 @bot.event
 async def on_ready():
     print("on_ready 호출됨")

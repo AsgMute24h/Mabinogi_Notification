@@ -128,9 +128,9 @@ async def 채널(interaction: discord.Interaction, 유형: str, 대상: discord.
     save_channel_config()
     await interaction.response.send_message(f"✅ {유형} 채널이 <#{대상.id}>로 설정되었습니다.", ephemeral=True)
 
-@tree.command(name="캐릭터", description="캐릭터를 추가하거나 제거합니다.")
-@app_commands.describe(subcommand="추가 또는 제거", 닉네임="캐릭터 닉네임")
-async def 캐릭터(interaction: discord.Interaction, subcommand: str, 닉네임: str):
+@tree.command(name="캐릭터", description="캐릭터를 추가하거나 제거하거나 목록을 확인합니다.")
+@app_commands.describe(subcommand="추가, 제거 또는 목록", 닉네임="캐릭터 닉네임 (목록일 경우 생략 가능)")
+async def 캐릭터(interaction: discord.Interaction, subcommand: str, 닉네임: str = None):
     uid = interaction.user.id
     if uid not in user_data:
         user_data[uid] = {name: {t: False for t in binary_tasks} | {t: count_tasks[t] for t in count_tasks} for name in get_default_characters()}
@@ -152,8 +152,16 @@ async def 캐릭터(interaction: discord.Interaction, subcommand: str, 닉네임
             await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
         else:
             await interaction.response.send_message(f"존재하지 않는 캐릭터입니다: {닉네임}", ephemeral=True)
+    elif subcommand == "목록":
+        if uid not in user_data or not user_data[uid]:
+            await interaction.response.send_message("❌ 등록된 캐릭터가 없습니다.", ephemeral=True)
+        else:
+            char_list = "
+".join(f"- {name}" for name in user_data[uid].keys())
+            await interaction.response.send_message(f"📋 현재 등록된 캐릭터 목록:
+{char_list}", ephemeral=True)
     else:
-        await interaction.response.send_message("서브 명령어는 '추가' 또는 '제거'만 가능합니다.", ephemeral=True)
+        await interaction.response.send_message("서브 명령어는 '추가', '제거', 또는 '목록'만 가능합니다.", ephemeral=True)
 
 @tree.command(name="숙제", description="숙제 현황을 표시합니다.")
 async def 숙제(interaction: discord.Interaction):

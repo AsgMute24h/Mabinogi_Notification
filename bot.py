@@ -22,6 +22,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 tree = bot.tree
 
 user_data = {}
+channel_config = {"alert": None, "homework": None}
 
 @tasks.loop(minutes=1)
 async def reset_checker():
@@ -29,7 +30,35 @@ async def reset_checker():
 
 @tasks.loop(minutes=1)
 async def notify_time():
-    pass
+    now = datetime.now(korea)
+    hour = now.hour
+    minute = now.minute
+    if minute == 55:
+        target_hour = (hour + 1) % 24
+        channel = bot.get_channel(channel_config["alert"] if channel_config["alert"] else CHANNEL_ID)
+        if not channel:
+            print("[❌ 오류] 채널을 찾을 수 없음.")
+            return
+
+        group_a = set(range(24))
+        group_b = {12, 18, 20, 22}
+
+        if target_hour in group_a:
+            await channel.send(f"@everyone 🔥 5분 뒤 {target_hour}시, 불길한 소환의 결계가 나타납니다.")
+        if target_hour in group_b:
+            await channel.send(f"@everyone ⚔️ 5분 뒤 {target_hour}시, 필드 보스가 출현합니다.")
+
+@tree.command(name="채널", description="알림 또는 숙제 채널을 설정합니다.")
+@app_commands.describe(유형="알림 또는 숙제", 대상="지정할 텍스트 채널")
+async def 채널(interaction: discord.Interaction, 유형: str, 대상: discord.TextChannel):
+    if 유형 not in ["알림", "숙제"]:
+        await interaction.response.send_message("⚠️ 유형은 '알림' 또는 '숙제'만 가능합니다.", ephemeral=True)
+        return
+    if 유형 == "알림":
+        channel_config["alert"] = 대상.id
+    else:
+        channel_config["homework"] = 대상.id
+    await interaction.response.send_message(f"✅ {유형} 채널이 <#{대상.id}>로 설정되었습니다.", ephemeral=True)
 
 @tree.command(name="추가", description="캐릭터를 추가합니다.")
 @app_commands.describe(닉네임="추가할 캐릭터 이름")
@@ -71,6 +100,8 @@ async def on_ready():
         print(f"✅ {bot.user} 로 로그인됨, {len(synced)}개의 명령어 동기화됨")
         for cmd in synced:
             print(f"- {cmd.name}")
+    except Exception as e:
+        print(f"❌ 명령어 동기화 실패: {e}")
     reset_checker.start()
     notify_time.start()
 

@@ -1,6 +1,7 @@
 import os
 import discord
 from discord.ext import commands, tasks
+from discord import app_commands
 from dotenv import load_dotenv
 import datetime
 
@@ -30,6 +31,11 @@ task_status = {char: {
 @bot.event
 async def on_ready():
     print(f"{bot.user} is online")
+    try:
+        synced = await bot.tree.sync()
+        print(f"✅ 슬래시 커맨드 {len(synced)}개 동기화 완료")
+    except Exception as e:
+        print(f"❌ 슬래시 커맨드 동기화 실패: {e}")
     send_reminders.start()
 
 @tasks.loop(minutes=1)
@@ -73,5 +79,10 @@ async def 초기화(ctx):
     for char in characters:
         task_status[char]["일일"] = daily_tasks.copy()
     await ctx.send("🔄 모든 캐릭터의 일일 숙제를 초기화했어요.")
+
+@bot.tree.command(name="캐릭터목록", description="등록된 캐릭터 목록을 보여줍니다.")
+async def 캐릭터목록(interaction: discord.Interaction):
+    char_list = "\n".join(characters)
+    await interaction.response.send_message(f"📋 등록된 캐릭터 목록:\n{char_list}")
 
 bot.run(TOKEN)

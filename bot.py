@@ -56,7 +56,7 @@ async def notify_time():
 ])
 @app_commands.describe(유형="알림 또는 숙제", 대상="지정할 텍스트 채널")
 async def 채널(interaction: discord.Interaction, 유형: app_commands.Choice[str], 대상: discord.TextChannel):
-        if 유형.value == "알림":
+    if 유형.value == "알림":
         channel_config["alert"] = 대상.id
     else:
         channel_config["homework"] = 대상.id

@@ -21,7 +21,13 @@ intents.message_content = True
 bot = discord.Client(intents=intents)
 tree = app_commands.CommandTree(bot)
 
-...
+@tasks.loop(minutes=1)
+async def reset_checker():
+    pass  # 실제 reset_checker 구현 코드는 여기에 작성되어야 합니다.
+
+@tasks.loop(minutes=1)
+async def notify_time():
+    pass  # 실제 notify_time 구현 코드는 여기에 작성되어야 합니다.
 
 class CharacterGroup(Group):
     def __init__(self):
@@ -30,16 +36,16 @@ class CharacterGroup(Group):
     @app_commands.command(name="추가", description="캐릭터를 추가합니다.")
     @app_commands.describe(닉네임="추가할 캐릭터 이름")
     async def 추가(self, interaction: discord.Interaction, 닉네임: str):
-        ...
+        pass
 
     @app_commands.command(name="제거", description="캐릭터를 제거합니다.")
     @app_commands.describe(닉네임="제거할 캐릭터 이름")
     async def 제거(self, interaction: discord.Interaction, 닉네임: str):
-        ...
+        pass
 
     @app_commands.command(name="목록", description="등록된 캐릭터 목록을 확인합니다.")
     async def 목록(self, interaction: discord.Interaction):
-        ...
+        pass
 
 @bot.event
 async def on_ready():

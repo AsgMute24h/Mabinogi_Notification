@@ -83,7 +83,10 @@ class TaskButton(Button):
         await interaction.response.edit_message(embed=generate_embed(self.user_id), view=generate_view(self.user_id))
 
 def generate_embed(user_id):
-    embed = discord.Embed(title="숙제 현황", description="각 캐릭터의 숙제 상태입니다.")
+    today = datetime.now(korea)
+    date_str = today.strftime("[%Y/%m/%d %A]").replace("Monday", "월요일").replace("Tuesday", "화요일").replace("Wednesday", "수요일").replace("Thursday", "목요일").replace("Friday", "금요일").replace("Saturday", "토요일").replace("Sunday", "일요일")
+    embed = discord.Embed(title="숙제 현황", description=f"{date_str}
+각 캐릭터의 숙제 상태입니다.")title="숙제 현황", description="각 캐릭터의 숙제 상태입니다.")
     for char_name, tasks in user_data[user_id].items():
         lines = []
         lines.append("[일간] " + " | ".join([
@@ -186,11 +189,27 @@ async def reset_checker():
             for char in user_data[uid].values():
                 for task in daily_tasks:
                     char[task] = False if task in binary_tasks else count_tasks[task]
+                for task in shop_tasks:
+                    char[task] = False
                 if now.weekday() == 1:
                     for task in weekly_tasks:
                         char[task] = False
         save_data()
         print("숙제 리셋 완료")
+
+        if channel_config["homework"]:
+            channel = bot.get_channel(channel_config["homework"])
+            if channel:
+                for uid in user_data:
+                channel = bot.get_channel(channel_config["homework"])
+                if channel:
+                    try:
+                        embed = generate_embed(uid)
+                        await channel.send(embed=embed, ephemeral=True)
+                    except Exception as e:
+                        print(f"[숙제 리셋 전송 실패] {uid}: {e}")
+            except Exception as e:
+                print(f"[DM 실패] {uid}: {e}")
 
 @tasks.loop(minutes=1)
 async def notify_time():

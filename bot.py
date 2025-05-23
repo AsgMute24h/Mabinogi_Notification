@@ -100,10 +100,17 @@ def generate_embed(user_id):
         lines.append("[주간] " + " | ".join([
             f"{'✅' if tasks[t] else '❌'} {t}" for t in weekly_tasks
         ]))
-        lines.append("[구매] " + " | ".join([
-            f"{'✅' if tasks[t] else '❌'} {t}" for t in shop_tasks
-        ]))
-        embed.add_field(name=f"ㅇ {char_name}", value="\n".join(lines), inline=False)
+        embed.add_field(name=f"ㅇ {char_name}", value="
+".join(lines), inline=False)
+
+    # 계정 통합 항목은 맨 아래에 한 번만 표시
+    if user_data[user_id]:
+        first_char = next(iter(user_data[user_id].values()))
+        shop_line = "[구매] " + " | ".join([
+            f"{'✅' if first_char[t] else '❌'} {t}" for t in shop_tasks
+        ])
+        embed.add_field(name="📦 계정 공통", value=shop_line, inline=False)
+".join(lines), inline=False)
     return embed
 
 def generate_view(user_id):
@@ -157,8 +164,6 @@ async def 캐릭터(interaction: discord.Interaction, subcommand: str, 닉네임
             await interaction.response.send_message("❌ 등록된 캐릭터가 없습니다.", ephemeral=True)
         else:
             char_list = "
-".join(f"- {name}" for name in user_data[uid].keys())
-            #
 ".join(f"- {name}" for name in user_data[uid].keys())
             await interaction.response.send_message(f"📋 현재 등록된 캐릭터 목록:
 {char_list}", ephemeral=True)

@@ -73,6 +73,7 @@ async def 추가(interaction: discord.Interaction, 닉네임: str):
     else:
         user_data[uid].append(닉네임)
         await interaction.response.send_message(f"✅ 캐릭터 '{닉네임}' 추가 완료!", ephemeral=True)
+    await 숙제(interaction)
 
 @tree.command(name="제거", description="캐릭터를 제거합니다.")
 @app_commands.describe(닉네임="제거할 캐릭터 이름")
@@ -83,6 +84,7 @@ async def 제거(interaction: discord.Interaction, 닉네임: str):
     else:
         user_data[uid].remove(닉네임)
         await interaction.response.send_message(f"🗑️ 캐릭터 '{닉네임}' 제거 완료!", ephemeral=True)
+    await 숙제(interaction)
 
 @tree.command(name="목록", description="등록된 캐릭터 목록을 확인합니다.")
 async def 목록(interaction: discord.Interaction):
@@ -114,14 +116,7 @@ async def 숙제(interaction: discord.Interaction):
 async def on_ready():
     print("on_ready 호출됨")
     try:
-        guild = discord.Object(id=GUILD_ID)
-        if not tree.get_commands(guild=guild):
-            synced = await tree.sync(guild=guild)
-            print(f"✅ {bot.user} 로 로그인됨, {len(synced)}개의 명령어 동기화됨")
-            for cmd in synced:
-                print(f"- {cmd.name}")
-        else:
-            print(f"✅ {bot.user} 로 로그인됨 (명령어 이미 동기화됨)")
+        print(f"✅ {bot.user} 로 로그인됨 (명령어 동기화 생략됨)")
     except Exception as e:
         print(f"❌ 명령어 동기화 실패: {e}")
     reset_checker.start()

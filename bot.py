@@ -8,6 +8,7 @@ import os
 import json
 import pytz
 from dotenv import load_dotenv
+from typing import Literal
 import keep_alive
 
 load_dotenv()
@@ -50,7 +51,7 @@ async def notify_time():
 
 @tree.command(name="채널", description="알림 또는 숙제 채널을 설정합니다.")
 @app_commands.describe(유형="알림 또는 숙제", 대상="지정할 텍스트 채널")
-async def 채널(interaction: discord.Interaction, 유형: str, 대상: discord.TextChannel):
+async def 채널(interaction: discord.Interaction, 유형: Literal["알림", "숙제"], 대상: discord.TextChannel):
     if 유형 not in ["알림", "숙제"]:
         await interaction.response.send_message("⚠️ 유형은 '알림' 또는 '숙제'만 가능합니다.", ephemeral=True)
         return

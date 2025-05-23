@@ -72,6 +72,9 @@ class TaskButton(Button):
             await interaction.response.send_message("본인의 숙제만 조작할 수 있습니다.", ephemeral=True)
             return
 
+        if self.user_id not in user_data or self.char_name not in user_data[self.user_id]:
+            await interaction.response.send_message("❌ 이 캐릭터는 삭제되었거나 존재하지 않습니다. `/숙제`를 다시 입력해 주세요.", ephemeral=True)
+            return
         char_data = user_data[self.user_id][self.char_name]
         if self.is_counter:
             current = char_data[self.task_name]
@@ -138,12 +141,16 @@ async def 캐릭터(interaction: discord.Interaction, subcommand: str, 닉네임
         else:
             user_data[uid][닉네임] = {t: False for t in binary_tasks} | {t: count_tasks[t] for t in count_tasks}
             save_data()
-            await interaction.response.send_message(f"캐릭터 {닉네임} 추가 완료!", ephemeral=True)
+            embed = generate_embed(uid)
+            view = generate_view(uid)
+            await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
     elif subcommand == "제거":
         if 닉네임 in user_data[uid]:
             del user_data[uid][닉네임]
             save_data()
-            await interaction.response.send_message(f"캐릭터 {닉네임} 제거 완료!", ephemeral=True)
+            embed = generate_embed(uid)
+            view = generate_view(uid)
+            await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
         else:
             await interaction.response.send_message(f"존재하지 않는 캐릭터입니다: {닉네임}", ephemeral=True)
     else:

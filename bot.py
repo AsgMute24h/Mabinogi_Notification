@@ -101,7 +101,7 @@ def generate_embed(user_id):
             f"{'✅' if tasks[t] else '❌'} {t}" for t in weekly_tasks
         ]))
         embed.add_field(name=f"ㅇ {char_name}", value="
-".join(lines), inline=False)
+"".join(lines), inline=False)
 
     # 계정 통합 항목은 맨 아래에 한 번만 표시
     if user_data[user_id]:

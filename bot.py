@@ -30,9 +30,7 @@ async def reset_checker():
 async def notify_time():
     pass
 
-캐릭터 = app_commands.Group(name="캐릭터", description="캐릭터를 관리합니다.")
-
-@캐릭터.command(name="추가", description="캐릭터를 추가합니다.")
+@tree.command(name="캐릭터_추가", description="캐릭터를 추가합니다.")
 @app_commands.describe(닉네임="추가할 캐릭터 이름")
 async def 캐릭터_추가(interaction: discord.Interaction, 닉네임: str):
     uid = interaction.user.id
@@ -44,7 +42,7 @@ async def 캐릭터_추가(interaction: discord.Interaction, 닉네임: str):
         user_data[uid].append(닉네임)
         await interaction.response.send_message(f"✅ 캐릭터 '{닉네임}' 추가 완료!", ephemeral=True)
 
-@캐릭터.command(name="제거", description="캐릭터를 제거합니다.")
+@tree.command(name="캐릭터_제거", description="캐릭터를 제거합니다.")
 @app_commands.describe(닉네임="제거할 캐릭터 이름")
 async def 캐릭터_제거(interaction: discord.Interaction, 닉네임: str):
     uid = interaction.user.id
@@ -54,7 +52,7 @@ async def 캐릭터_제거(interaction: discord.Interaction, 닉네임: str):
         user_data[uid].remove(닉네임)
         await interaction.response.send_message(f"🗑️ 캐릭터 '{닉네임}' 제거 완료!", ephemeral=True)
 
-@캐릭터.command(name="목록", description="등록된 캐릭터 목록을 확인합니다.")
+@tree.command(name="캐릭터_목록", description="등록된 캐릭터 목록을 확인합니다.")
 async def 캐릭터_목록(interaction: discord.Interaction):
     uid = interaction.user.id
     if uid not in user_data or not user_data[uid]:
@@ -65,7 +63,6 @@ async def 캐릭터_목록(interaction: discord.Interaction):
 
 @bot.event
 async def on_ready():
-    tree.add_command(캐릭터)
     await tree.sync()
     print(f"✅ {bot.user} 로 로그인됨")
     reset_checker.start()

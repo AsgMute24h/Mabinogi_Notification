@@ -66,11 +66,9 @@ class CharacterGroup(app_commands.Group):
             char_list = "\n".join(f"- {name}" for name in user_data[uid])
             await interaction.response.send_message(f"📋 현재 등록된 캐릭터 목록:\n{char_list}", ephemeral=True)
 
-character_group = CharacterGroup()
-tree.add_command(character_group)
-
 @bot.event
 async def on_ready():
+    tree.add_command(CharacterGroup())  # 이 시점에 명령어 그룹 등록
     await tree.sync()
     print(f"✅ {bot.user} 로 로그인됨")
     reset_checker.start()

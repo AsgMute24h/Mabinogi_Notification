@@ -64,12 +64,13 @@ async def 목록(interaction: discord.Interaction):
 
 @bot.event
 async def on_ready():
+    print("on_ready 호출됨")
     try:
         guild = discord.Object(id=GUILD_ID)
         synced = await tree.sync(guild=guild)  # 특정 서버에만 명령어 동기화
         print(f"✅ {bot.user} 로 로그인됨, {len(synced)}개의 명령어 동기화됨")
-    except Exception as e:
-        print(f"❌ 명령어 동기화 실패: {e}")
+        for cmd in synced:
+            print(f"- {cmd.name}")
     reset_checker.start()
     notify_time.start()
 

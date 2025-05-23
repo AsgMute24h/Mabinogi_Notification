@@ -13,6 +13,7 @@ import keep_alive
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
+GUILD_ID = int(os.getenv("GUILD_ID"))  # 서버 ID를 환경 변수에서 불러오기
 korea = pytz.timezone('Asia/Seoul')
 
 intents = discord.Intents.default()
@@ -63,7 +64,8 @@ async def 목록(interaction: discord.Interaction):
 
 @bot.event
 async def on_ready():
-    await tree.sync()
+    guild = discord.Object(id=GUILD_ID)
+    await tree.sync(guild=guild)  # 특정 서버에만 명령어 동기화
     print(f"✅ {bot.user} 로 로그인됨")
     reset_checker.start()
     notify_time.start()

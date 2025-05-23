@@ -50,16 +50,20 @@ async def notify_time():
             await channel.send(f"@everyone ⚔️ 5분 뒤 {target_hour}시, 필드 보스가 출현합니다.")
 
 @tree.command(name="채널", description="알림 또는 숙제 채널을 설정합니다.")
+@app_commands.choices(유형=[
+    app_commands.Choice(name="알림", value="알림"),
+    app_commands.Choice(name="숙제", value="숙제")
+])
 @app_commands.describe(유형="알림 또는 숙제", 대상="지정할 텍스트 채널")
-async def 채널(interaction: discord.Interaction, 유형: Literal["알림", "숙제"], 대상: discord.TextChannel):
+async def 채널(interaction: discord.Interaction, 유형: app_commands.Choice[str], 대상: discord.TextChannel):
     if 유형 not in ["알림", "숙제"]:
         await interaction.response.send_message("⚠️ 유형은 '알림' 또는 '숙제'만 가능합니다.", ephemeral=True)
         return
-    if 유형 == "알림":
+    if 유형.value == "알림":
         channel_config["alert"] = 대상.id
     else:
         channel_config["homework"] = 대상.id
-    await interaction.response.send_message(f"✅ {유형} 채널이 <#{대상.id}>로 설정되었습니다.", ephemeral=True)
+    await interaction.response.send_message(f"✅ {유형.name} 채널이 <#{대상.id}>로 설정되었습니다.", ephemeral=True)
 
 @tree.command(name="추가", description="캐릭터를 추가합니다.")
 @app_commands.describe(닉네임="추가할 캐릭터 이름")

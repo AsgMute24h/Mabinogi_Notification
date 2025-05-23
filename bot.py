@@ -88,8 +88,7 @@ class TaskButton(Button):
 def generate_embed(user_id):
     today = datetime.now(korea)
     date_str = today.strftime("[%Y/%m/%d %A]").replace("Monday", "월요일").replace("Tuesday", "화요일").replace("Wednesday", "수요일").replace("Thursday", "목요일").replace("Friday", "금요일").replace("Saturday", "토요일").replace("Sunday", "일요일")
-    embed = discord.Embed(title="숙제 현황", description=f"{date_str}
-각 캐릭터의 숙제 상태입니다.")
+    embed = discord.Embed(title="숙제 현황", description=f"{date_str}\n각 캐릭터의 숙제 상태입니다.")
     for char_name, tasks in user_data[user_id].items():
         lines = []
         lines.append("[일간] " + " | ".join([
@@ -173,20 +172,6 @@ async def 숙제(interaction: discord.Interaction):
     except Exception as e:
         await interaction.response.send_message("❌ 오류가 발생했습니다. 로그를 확인해 주세요.", ephemeral=True)
         print(f"[숙제 오류] {e}")
-    if channel_config["homework"] and interaction.channel.id != channel_config["homework"]:
-        await interaction.response.send_message("⚠️ 이 채널에서는 숙제 명령을 사용할 수 없습니다.", ephemeral=True)
-        return
-
-    uid = interaction.user.id
-    if uid not in user_data:
-        user_data[uid] = {name: {t: False for t in binary_tasks} | {t: count_tasks[t] for t in count_tasks} for name in get_default_characters()}
-
-    embed = generate_embed(uid)
-    view = generate_view(uid)
-            await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
-    except Exception as e:
-        await interaction.response.send_message("❌ 오류가 발생했습니다. 로그를 확인해 주세요.", ephemeral=True)
-        print(f"[숙제 오류] {e}")
 
 @tasks.loop(minutes=1)
 async def reset_checker():
@@ -204,19 +189,14 @@ async def reset_checker():
         save_data()
         print("숙제 리셋 완료")
 
-        if channel_config["homework"]:
-            channel = bot.get_channel(channel_config["homework"])
-            if channel:
-                for uid in user_data:
-                channel = bot.get_channel(channel_config["homework"])
-                if channel:
-                    try:
-                        embed = generate_embed(uid)
-                        await channel.send(embed=embed, ephemeral=True)
-                    except Exception as e:
-                        print(f"[숙제 리셋 전송 실패] {uid}: {e}")
-            except Exception as e:
-                print(f"[DM 실패] {uid}: {e}")
+        channel = bot.get_channel(channel_config["homework"])
+        if channel:
+            for uid in user_data:
+                try:
+                    embed = generate_embed(uid)
+                    await channel.send(embed=embed, ephemeral=True)
+                except Exception as e:
+                    print(f"[숙제 리셋 전송 실패] {uid}: {e}")
 
 @tasks.loop(minutes=1)
 async def notify_time():

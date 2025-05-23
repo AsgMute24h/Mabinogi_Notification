@@ -30,9 +30,9 @@ async def reset_checker():
 async def notify_time():
     pass
 
-@tree.command(name="캐릭터_추가", description="캐릭터를 추가합니다.")
+@tree.command(name="추가", description="캐릭터를 추가합니다.")
 @app_commands.describe(닉네임="추가할 캐릭터 이름")
-async def 캐릭터_추가(interaction: discord.Interaction, 닉네임: str):
+async def 추가(interaction: discord.Interaction, 닉네임: str):
     uid = interaction.user.id
     if uid not in user_data:
         user_data[uid] = []
@@ -42,9 +42,9 @@ async def 캐릭터_추가(interaction: discord.Interaction, 닉네임: str):
         user_data[uid].append(닉네임)
         await interaction.response.send_message(f"✅ 캐릭터 '{닉네임}' 추가 완료!", ephemeral=True)
 
-@tree.command(name="캐릭터_제거", description="캐릭터를 제거합니다.")
+@tree.command(name="제거", description="캐릭터를 제거합니다.")
 @app_commands.describe(닉네임="제거할 캐릭터 이름")
-async def 캐릭터_제거(interaction: discord.Interaction, 닉네임: str):
+async def 제거(interaction: discord.Interaction, 닉네임: str):
     uid = interaction.user.id
     if uid not in user_data or 닉네임 not in user_data[uid]:
         await interaction.response.send_message(f"존재하지 않는 캐릭터입니다: {닉네임}", ephemeral=True)
@@ -52,8 +52,8 @@ async def 캐릭터_제거(interaction: discord.Interaction, 닉네임: str):
         user_data[uid].remove(닉네임)
         await interaction.response.send_message(f"🗑️ 캐릭터 '{닉네임}' 제거 완료!", ephemeral=True)
 
-@tree.command(name="캐릭터_목록", description="등록된 캐릭터 목록을 확인합니다.")
-async def 캐릭터_목록(interaction: discord.Interaction):
+@tree.command(name="목록", description="등록된 캐릭터 목록을 확인합니다.")
+async def 목록(interaction: discord.Interaction):
     uid = interaction.user.id
     if uid not in user_data or not user_data[uid]:
         await interaction.response.send_message("❌ 등록된 캐릭터가 없습니다.", ephemeral=True)

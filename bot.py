@@ -89,7 +89,7 @@ def generate_embed(user_id):
     today = datetime.now(korea)
     date_str = today.strftime("[%Y/%m/%d %A]").replace("Monday", "월요일").replace("Tuesday", "화요일").replace("Wednesday", "수요일").replace("Thursday", "목요일").replace("Friday", "금요일").replace("Saturday", "토요일").replace("Sunday", "일요일")
     embed = discord.Embed(title="숙제 현황", description=f"{date_str}
-각 캐릭터의 숙제 상태입니다.")title="숙제 현황", description="각 캐릭터의 숙제 상태입니다.")
+각 캐릭터의 숙제 상태입니다.")
     for char_name, tasks in user_data[user_id].items():
         lines = []
         lines.append("[일간] " + " | ".join([

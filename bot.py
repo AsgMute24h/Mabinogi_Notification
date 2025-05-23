@@ -63,7 +63,7 @@ async def 목록(interaction: discord.Interaction):
 
 @bot.event
 async def on_ready():
-    await tree.sync()
+    await tree.sync(force=True)
     print(f"✅ {bot.user} 로 로그인됨")
     reset_checker.start()
     notify_time.start()

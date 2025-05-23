@@ -1,7 +1,7 @@
 import discord
-from discord.ext import tasks
-from discord.ui import View, Button
+from discord.ext import commands, tasks
 from discord import app_commands
+from discord.ui import View, Button
 from datetime import datetime, timedelta
 import asyncio
 import os
@@ -17,8 +17,8 @@ korea = pytz.timezone('Asia/Seoul')
 
 intents = discord.Intents.default()
 intents.message_content = True
-bot = discord.Client(intents=intents)
-tree = app_commands.CommandTree(bot)
+bot = commands.Bot(command_prefix="!", intents=intents)
+tree = bot.tree
 
 user_data = {}
 
@@ -63,7 +63,7 @@ async def 목록(interaction: discord.Interaction):
 
 @bot.event
 async def on_ready():
-    await tree.sync(force=True)
+    await tree.sync()
     print(f"✅ {bot.user} 로 로그인됨")
     reset_checker.start()
     notify_time.start()

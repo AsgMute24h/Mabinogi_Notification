@@ -158,6 +158,8 @@ async def 캐릭터(interaction: discord.Interaction, subcommand: str, 닉네임
         else:
             char_list = "
 ".join(f"- {name}" for name in user_data[uid].keys())
+            #
+".join(f"- {name}" for name in user_data[uid].keys())
             await interaction.response.send_message(f"📋 현재 등록된 캐릭터 목록:
 {char_list}", ephemeral=True)
     else:

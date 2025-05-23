@@ -149,6 +149,20 @@ async def 캐릭터(interaction: discord.Interaction, subcommand: str, 닉네임
 @tree.command(name="숙제", description="숙제 현황을 표시합니다.")
 async def 숙제(interaction: discord.Interaction):
     try:
+        if channel_config["homework"] and interaction.channel.id != channel_config["homework"]:
+            await interaction.response.send_message("⚠️ 이 채널에서는 숙제 명령을 사용할 수 없습니다.", ephemeral=True)
+            return
+
+        uid = interaction.user.id
+        if uid not in user_data:
+            user_data[uid] = {name: {t: False for t in binary_tasks} | {t: count_tasks[t] for t in count_tasks} for name in get_default_characters()}
+
+        embed = generate_embed(uid)
+        view = generate_view(uid)
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+    except Exception as e:
+        await interaction.response.send_message("❌ 오류가 발생했습니다. 로그를 확인해 주세요.", ephemeral=True)
+        print(f"[숙제 오류] {e}")
     if channel_config["homework"] and interaction.channel.id != channel_config["homework"]:
         await interaction.response.send_message("⚠️ 이 채널에서는 숙제 명령을 사용할 수 없습니다.", ephemeral=True)
         return

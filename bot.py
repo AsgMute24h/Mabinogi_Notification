@@ -44,10 +44,10 @@ async def send_reminders():
 async def 숙제(ctx):
     embed = discord.Embed(title="🎯 숙제 현황", color=0x00ffcc)
     for char_name, status in task_status.items():
-        value = ""
-        value += "**일일**: " + ", ".join(status["일일"]) + "\n"
-        value += "**주간**: " + ", ".join(status["주간"]) + "\n"
-        value += "**캐시샵**: " + ", ".join(status["캐시샵"])
+        daily = ", ".join(status["일일"])
+        weekly = ", ".join(status["주간"])
+        shop = ", ".join(status["캐시샵"])
+        value = f"**일일**: {daily}\n**주간**: {weekly}\n**캐시샵**: {shop}"
         embed.add_field(name=f"📌 {char_name}", value=value, inline=False)
     await ctx.send(embed=embed)
 

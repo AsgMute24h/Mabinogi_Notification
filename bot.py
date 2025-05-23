@@ -30,9 +30,7 @@ async def reset_checker():
 async def notify_time():
     pass
 
-@tree.group(name="캐릭터", description="캐릭터를 관리합니다.")
-async def 캐릭터(interaction: discord.Interaction):
-    pass
+캐릭터 = app_commands.Group(name="캐릭터", description="캐릭터를 관리합니다.")
 
 @캐릭터.command(name="추가", description="캐릭터를 추가합니다.")
 @app_commands.describe(닉네임="추가할 캐릭터 이름")
@@ -67,6 +65,7 @@ async def 캐릭터_목록(interaction: discord.Interaction):
 
 @bot.event
 async def on_ready():
+    tree.add_command(캐릭터)
     await tree.sync()
     print(f"✅ {bot.user} 로 로그인됨")
     reset_checker.start()

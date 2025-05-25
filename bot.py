@@ -270,9 +270,12 @@ async def notify_time():
 async def on_ready():
     global user_data, channel_config
     print("on_ready 호출됨")
+    user_data = load_user_data()       # 🔴 추가!
+    channel_config = load_channel_config()  # 🔴 추가!
+
     try:
-        guild = discord.Object(id=GUILD_ID)  # 또는 None으로 두면 글로벌 등록
-        await tree.sync(guild=guild)  # 🔴 깃허브처럼 동기화 반드시 실행!
+        guild = discord.Object(id=GUILD_ID)
+        await tree.sync(guild=guild)
         print("✅ 명령어 동기화 완료")
     except Exception as e:
         print(f"❌ 명령어 동기화 실패: {e}")

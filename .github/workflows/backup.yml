@@ -1,0 +1,23 @@
+name: JSON Backup
+
+on:
+  schedule:
+    - cron: "0 */12 * * *"  # 12시간마다 실행
+  workflow_dispatch:  # 수동으로도 실행 가능
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+        with:
+          ref: main  # 너의 브랜치에 따라 변경
+
+      - name: Commit and push
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add user_data.json channel_config.json
+          git commit -m "자동 백업: $(date '+%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"
+          git push

@@ -206,6 +206,10 @@ async def 제거(interaction: discord.Interaction, 닉네임: str):
     else:
         await safe_send(interaction, f"존재하지 않는 캐릭터입니다: {닉네임}", ephemeral=True)
 
+@tree.command(name="숙제", description="숙제 현황을 다시 보여줍니다.")
+async def 숙제(interaction: discord.Interaction):
+    await show_homework(interaction)
+
 @tree.command(name="목록", description="등록된 캐릭터 목록을 확인합니다.")
 async def 목록(interaction: discord.Interaction):
     uid = interaction.user.id

@@ -12,7 +12,7 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v3
         with:
-          ref: main  # 너의 브랜치에 따라 변경
+          ref: main
 
       - name: Commit and push
         run: |

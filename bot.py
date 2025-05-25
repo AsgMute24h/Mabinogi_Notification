@@ -8,7 +8,6 @@ import os
 import json
 import pytz
 from dotenv import load_dotenv
-import boto3
 
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -31,22 +30,20 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_FILE = os.path.join(BASE_DIR, "user_data.json")
 CONFIG_FILE = os.path.join(BASE_DIR, "channel_config.json")
 
-s3 = boto3.client('s3')
-
-BUCKET = 'your-bucket-name'
-KEY = 'user_data.json'
-
 def load_user_data():
     try:
-        response = s3.get_object(Bucket=BUCKET, Key=KEY)
-        return json.loads(response['Body'].read().decode('utf-8'))
-    except s3.exceptions.NoSuchKey:
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
         return {}
 
-def save_user_data(data):
-    s3.put_object(Bucket=BUCKET, Key=KEY, Body=json.dumps(data).encode('utf-8'))
+def load_channel_config():
+    try:
+        with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
 
-# 실제 데이터를 불러오기
 user_data = load_user_data()
 channel_config = load_channel_config()
 
@@ -109,7 +106,7 @@ class PageView(View):
                                 user_data[uid][char][task] = new_val
                     else:
                         user_data[self.user_id][current_char][task] = not user_data[self.user_id][current_char][task]
-                save_user_data(user_data)
+                save_user_data()
 
             self.update_buttons()
             await self.update(interaction)
@@ -185,7 +182,7 @@ async def 추가(interaction: discord.Interaction, 닉네임: str):
         await interaction.response.send_message(f"이미 존재하는 캐릭터입니다: {닉네임}", ephemeral=True)
     else:
         user_data[uid][닉네임] = {t: False for t in binary_tasks} | count_tasks.copy()
-        save_user_data(user_data)
+        save_user_data()
         await show_homework(interaction)
 
 @tree.command(name="제거", description="캐릭터를 제거합니다.")
@@ -194,7 +191,7 @@ async def 제거(interaction: discord.Interaction, 닉네임: str):
     uid = interaction.user.id
     if uid in user_data and 닉네임 in user_data[uid]:
         del user_data[uid][닉네임]
-        save_user_data(user_data)
+        save_user_data()
         await show_homework(interaction)
     else:
         await interaction.response.send_message(f"존재하지 않는 캐릭터입니다: {닉네임}", ephemeral=True)
@@ -239,7 +236,7 @@ async def reset_checker():
                 if now.weekday() == 1:
                     for task in weekly_tasks:
                         char[task] = False
-        save_user_data(user_data)
+        save_user_data()
         print("숙제 리셋 완료")
         channel = bot.get_channel(channel_config["homework"])
         if channel:

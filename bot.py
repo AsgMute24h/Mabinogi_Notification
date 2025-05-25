@@ -205,24 +205,29 @@ async def 목록(interaction: discord.Interaction):
         char_list = "\n".join(f"- {name}" for name in user_data[uid])
         await interaction.response.send_message(f"📋 현재 등록된 캐릭터 목록:\n{char_list}", ephemeral=True)
 
-async def show_homework(interaction):
+async def show_homework(interaction: discord.Interaction):
     uid = interaction.user.id
     if uid not in user_data or not user_data[uid]:
-        await interaction.response.send_message("❌ 등록된 캐릭터가 없습니다. `/추가` 명령어로 캐릭터를 먼저 등록하세요.", ephemeral=True)
+        # 🔴 기존 메시지가 있어도 덮어쓰기
+        if interaction.response.is_done():
+            await interaction.edit_original_response(content="❌ 등록된 캐릭터가 없습니다. `/추가` 명령어로 캐릭터를 먼저 등록하세요.", view=None)
+        else:
+            await interaction.response.send_message("❌ 등록된 캐릭터가 없습니다. `/추가` 명령어로 캐릭터를 먼저 등록하세요.", ephemeral=True)
         return
+
     char_list = list(user_data[uid].keys())
-    # 최근에 추가된 캐릭터를 가장 앞에 오도록 정렬
     current_char = char_list[-1]
     desc = get_task_status_display(user_data[uid][current_char])
-    if interaction.message:
-        await interaction.response.edit_message(content=f"[2025/05/25] {current_char}\n{desc}", view=PageView(uid, page=len(char_list)-1))
+    
+    content = f"[2025/05/25] {current_char}\n{desc}"
+    view = PageView(uid, page=len(char_list)-1)
+    
+    # 🔴 기존 메시지가 있으면 edit, 없으면 send
+    if interaction.response.is_done():
+        await interaction.edit_original_response(content=content, view=view)
     else:
-        await interaction.response.send_message(content=f"[2025/05/25] {current_char}\n{desc}", view=PageView(uid, page=len(char_list)-1))
-
-@tree.command(name="숙제", description="숙제 현황을 표시합니다.")
-async def 숙제(interaction: discord.Interaction):
-    await show_homework(interaction)
-
+        await interaction.response.send_message(content=content, view=view)
+        
 @tasks.loop(minutes=1)
 async def reset_checker():
     now = datetime.now(korea)

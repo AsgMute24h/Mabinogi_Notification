@@ -199,7 +199,12 @@ async def 제거(interaction: discord.Interaction, 닉네임: str):
 @tree.command(name="목록", description="등록된 캐릭터 목록을 확인합니다.")
 async def 목록(interaction: discord.Interaction):
     uid = interaction.user.id
-    if uid not in user_data or not user_data[uid]:
+    # 🔴 기존 코드
+    # if uid not in user_data or not user_data[uid]:
+    #     ...
+
+    # 🟡 수정 코드
+    if uid not in user_data or not any(user_data[uid].values()):
         await interaction.response.send_message("❌ 등록된 캐릭터가 없습니다.", ephemeral=True)
     else:
         char_list = "\n".join(f"- {name}" for name in user_data[uid])

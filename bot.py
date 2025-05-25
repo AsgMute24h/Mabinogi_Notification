@@ -30,6 +30,16 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_FILE = os.path.join(BASE_DIR, "user_data.json")
 CONFIG_FILE = os.path.join(BASE_DIR, "channel_config.json")
 
+async def safe_send(interaction: discord.Interaction, content=None, **kwargs):
+    try:
+        await interaction.response.send_message(content=content, **kwargs)
+    except discord.errors.NotFound:
+        # Interaction이 이미 응답됐을 때: edit_original_response()로 대체
+        try:
+            await interaction.edit_original_response(content=content, **kwargs)
+        except Exception as e:
+            print(f"[safe_send 오류] {e}")
+            
 def load_user_data():
     try:
         with open(DATA_FILE, "r", encoding="utf-8") as f:
@@ -170,7 +180,7 @@ async def 채널(interaction: discord.Interaction, 유형: str, 대상: discord.
     else:
         channel_config["homework"] = 대상.id
     save_channel_config()
-    await interaction.response.send_message(f"✅ {유형} 채널이 <#{대상.id}>로 설정되었습니다.", ephemeral=True)
+    await safe_send(interaction, f"✅ {유형} 채널이 <#{대상.id}>로 설정되었습니다.", ephemeral=True)
 
 @tree.command(name="추가", description="캐릭터를 추가합니다.")
 @app_commands.describe(닉네임="추가할 캐릭터 이름")
@@ -179,7 +189,7 @@ async def 추가(interaction: discord.Interaction, 닉네임: str):
     if uid not in user_data:
         user_data[uid] = {}
     if 닉네임 in user_data[uid]:
-        await interaction.response.send_message(f"이미 존재하는 캐릭터입니다: {닉네임}", ephemeral=True)
+        await safe_send(interaction, f"이미 존재하는 캐릭터입니다: {닉네임}", ephemeral=True)
     else:
         user_data[uid][닉네임] = {t: False for t in binary_tasks} | count_tasks.copy()
         save_user_data()
@@ -194,7 +204,7 @@ async def 제거(interaction: discord.Interaction, 닉네임: str):
         save_user_data()
         await show_homework(interaction)
     else:
-        await interaction.response.send_message(f"존재하지 않는 캐릭터입니다: {닉네임}", ephemeral=True)
+        await safe_send(interaction, f"존재하지 않는 캐릭터입니다: {닉네임}", ephemeral=True)
 
 @tree.command(name="목록", description="등록된 캐릭터 목록을 확인합니다.")
 async def 목록(interaction: discord.Interaction):
@@ -205,18 +215,15 @@ async def 목록(interaction: discord.Interaction):
 
     # 🟡 수정 코드
     if uid not in user_data or not any(user_data[uid].values()):
-        await interaction.response.send_message("❌ 등록된 캐릭터가 없습니다.", ephemeral=True)
+        await safe_send(interaction, "❌ 등록된 캐릭터가 없습니다.", ephemeral=True)
     else:
         char_list = "\n".join(f"- {name}" for name in user_data[uid])
-        await interaction.response.send_message(f"📋 현재 등록된 캐릭터 목록:\n{char_list}", ephemeral=True)
+        await safe_send(interaction, f"📋 현재 등록된 캐릭터 목록:\n{char_list}", ephemeral=True)
 
 async def show_homework(interaction: discord.Interaction):
     uid = interaction.user.id
     if uid not in user_data or not user_data[uid]:
-        await interaction.response.send_message(
-            "❌ 등록된 캐릭터가 없습니다. `/추가` 명령어로 캐릭터를 먼저 등록하세요.",
-            ephemeral=True
-        )
+        await safe_send(interaction, "❌ 등록된 캐릭터가 없습니다. `/추가` 명령어로 캐릭터를 먼저 등록하세요.", ephemeral=True)
         return
 
     char_list = list(user_data[uid].keys())
@@ -225,8 +232,7 @@ async def show_homework(interaction: discord.Interaction):
     content = f"[{datetime.now(korea).strftime('%Y/%m/%d')}] {current_char}\n{desc}"
     view = PageView(uid, page=len(char_list)-1)
 
-    # 🔴 기존 메시지와 관계없이 무조건 새 ephemeral 메시지로 전송!
-    await interaction.response.send_message(content=content, view=view, ephemeral=True)
+    await safe_send(interaction, content=content, view=view, ephemeral=True)
         
 @tasks.loop(minutes=1)
 async def reset_checker():

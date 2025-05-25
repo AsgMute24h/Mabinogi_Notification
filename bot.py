@@ -208,28 +208,20 @@ async def 목록(interaction: discord.Interaction):
 async def show_homework(interaction: discord.Interaction):
     uid = interaction.user.id
     if uid not in user_data or not user_data[uid]:
-        if interaction.response.is_done():
-            await interaction.edit_original_response(content="❌ 등록된 캐릭터가 없습니다. `/추가` 명령어로 캐릭터를 먼저 등록하세요.", view=None)
-        else:
-            await interaction.response.send_message("❌ 등록된 캐릭터가 없습니다. `/추가` 명령어로 캐릭터를 먼저 등록하세요.", ephemeral=True)
+        await interaction.response.send_message(
+            "❌ 등록된 캐릭터가 없습니다. `/추가` 명령어로 캐릭터를 먼저 등록하세요.",
+            ephemeral=True
+        )
         return
 
     char_list = list(user_data[uid].keys())
     current_char = char_list[-1]
     desc = get_task_status_display(user_data[uid][current_char])
-
-    content = f"[2025/05/25] {current_char}\n{desc}"
+    content = f"[{datetime.now(korea).strftime('%Y/%m/%d')}] {current_char}\n{desc}"
     view = PageView(uid, page=len(char_list)-1)
 
-    if interaction.response.is_done():
-        try:
-            await interaction.edit_original_response(content=content, view=view)
-        except discord.errors.NotFound:
-            # 이미 interaction이 만료된 경우엔 무시
-            pass
-    else:
-        # 🔴 여기서 입력한 당사자에게만 보이도록 ephemeral=True로 응답
-        await interaction.response.send_message(content=content, view=view, ephemeral=True)
+    # 🔴 기존 메시지와 관계없이 무조건 새 ephemeral 메시지로 전송!
+    await interaction.response.send_message(content=content, view=view, ephemeral=True)
         
 @tasks.loop(minutes=1)
 async def reset_checker():
@@ -274,8 +266,8 @@ async def on_ready():
     global user_data, channel_config
     print("on_ready 호출됨")
     try:
-        guild = discord.Object(id=GUILD_ID)
-        await tree.sync(guild=guild)
+        guild = discord.Object(id=GUILD_ID)  # 또는 None으로 두면 글로벌 등록
+        await tree.sync(guild=guild)  # 🔴 깃허브처럼 동기화 반드시 실행!
         print("✅ 명령어 동기화 완료")
     except Exception as e:
         print(f"❌ 명령어 동기화 실패: {e}")

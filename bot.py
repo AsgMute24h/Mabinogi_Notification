@@ -9,6 +9,9 @@ import time
 import json
 import pytz
 from dotenv import load_dotenv
+from keep_alive import keep_alive
+
+keep_alive()  # Flask 서버 시작
 
 os.environ["TZ"] = "Asia/Seoul"
 time.tzset()

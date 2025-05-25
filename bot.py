@@ -208,7 +208,6 @@ async def 목록(interaction: discord.Interaction):
 async def show_homework(interaction: discord.Interaction):
     uid = interaction.user.id
     if uid not in user_data or not user_data[uid]:
-        # 🔴 기존 메시지가 있어도 덮어쓰기
         if interaction.response.is_done():
             await interaction.edit_original_response(content="❌ 등록된 캐릭터가 없습니다. `/추가` 명령어로 캐릭터를 먼저 등록하세요.", view=None)
         else:
@@ -218,15 +217,19 @@ async def show_homework(interaction: discord.Interaction):
     char_list = list(user_data[uid].keys())
     current_char = char_list[-1]
     desc = get_task_status_display(user_data[uid][current_char])
-    
+
     content = f"[2025/05/25] {current_char}\n{desc}"
     view = PageView(uid, page=len(char_list)-1)
-    
-    # 🔴 기존 메시지가 있으면 edit, 없으면 send
+
     if interaction.response.is_done():
-        await interaction.edit_original_response(content=content, view=view)
+        try:
+            await interaction.edit_original_response(content=content, view=view)
+        except discord.errors.NotFound:
+            # 이미 interaction이 만료된 경우엔 무시
+            pass
     else:
-        await interaction.response.send_message(content=content, view=view)
+        # 🔴 여기서 입력한 당사자에게만 보이도록 ephemeral=True로 응답
+        await interaction.response.send_message(content=content, view=view, ephemeral=True)
         
 @tasks.loop(minutes=1)
 async def reset_checker():

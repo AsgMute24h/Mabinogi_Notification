@@ -5,9 +5,13 @@ from discord.ui import View, Button
 from datetime import datetime, timedelta
 import asyncio
 import os
+import time
 import json
 import pytz
 from dotenv import load_dotenv
+
+os.environ["TZ"] = "Asia/Seoul"
+time.tzset()
 
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")

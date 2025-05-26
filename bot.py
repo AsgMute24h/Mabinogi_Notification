@@ -238,10 +238,10 @@ async def show_homework(interaction: discord.Interaction):
         return
 
     char_list = list(user_data[uid].keys())
-    current_char = char_list[-1]
+    current_char = char_list[0]
     desc = get_task_status_display(user_data[uid][current_char])
     content = f"[{datetime.now(korea).strftime('%Y/%m/%d')}] {current_char}\n{desc}"
-    view = PageView(uid, page=len(char_list)-1)
+    view = PageView(uid, page=0)
 
     await safe_send(interaction, content=content, view=view, ephemeral=True)
         

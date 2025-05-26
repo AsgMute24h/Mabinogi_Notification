@@ -10,8 +10,13 @@ from dotenv import load_dotenv
 from keep_alive import keep_alive
 import psycopg2
 
-# 🌟 DB 연결
+# 🌟 환경설정 및 DB 연결
+load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL")
+TOKEN = os.getenv("DISCORD_TOKEN")
+CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
+GUILD_ID = int(os.getenv("GUILD_ID"))
+korea = pytz.timezone('Asia/Seoul')
 
 def get_conn():
     return psycopg2.connect(DATABASE_URL, sslmode='require')
@@ -60,16 +65,9 @@ def save_channel_config():
 
 channel_config = load_channel_config()
 
-# 🌟 discord 초기화
+# 🌟 디스코드 봇 설정
 keep_alive()
 os.environ["TZ"] = "Asia/Seoul"
-pytz.timezone('Asia/Seoul')
-load_dotenv()
-
-TOKEN = os.getenv("DISCORD_TOKEN")
-CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
-GUILD_ID = int(os.getenv("GUILD_ID"))
-korea = pytz.timezone('Asia/Seoul')
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -81,6 +79,15 @@ count_tasks = {"검은 구멍": 3, "결계": 2}
 daily_tasks = ["요일 던전", "심층 던전", "검은 구멍", "결계"]
 weekly_tasks = ["필드 보스", "어비스", "레이드"]
 shop_tasks = ["보석 상자", "무료 상품"]
+
+async def safe_send(interaction: discord.Interaction, content=None, **kwargs):
+    try:
+        await interaction.response.send_message(content=content, **kwargs)
+    except discord.errors.NotFound:
+        try:
+            await interaction.edit_original_response(content=content, **kwargs)
+        except Exception as e:
+            print(f"[safe_send 오류] {e}")
 
 def get_task_status_display(char_data):
     def checkbox(val): return "☑" if val else "☐"
@@ -214,7 +221,6 @@ async def show_homework(interaction: discord.Interaction):
     view = PageView(uid, page=0, user_data=user_data)
     await safe_send(interaction, content=content, view=view, ephemeral=True)
 
-# 🌟 기타 알림/리셋
 @tasks.loop(minutes=1)
 async def reset_checker():
     now = datetime.now(korea)
@@ -237,7 +243,7 @@ async def notify_time():
     now = datetime.now(korea)
     if now.minute == 55:
         target_hour = (now.hour + 1) % 24
-        channel = bot.get_channel(channel_config["alert"] or CHANNEL_ID)
+        channel = bot.get_channel(channel_config.get("alert") or CHANNEL_ID)
         if channel:
             if target_hour in range(24):
                 await channel.send(f"@everyone 🔥 5분 뒤 {target_hour}시, 불길한 소환의 결계가 나타납니다.")

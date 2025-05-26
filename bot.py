@@ -255,7 +255,7 @@ async def reset_checker():
                     char[task] = False if task in binary_tasks else count_tasks[task]
                 for task in shop_tasks:
                     char[task] = False
-                if now.weekday() == 1:
+                if now.weekday() == 0:
                     for task in weekly_tasks:
                         char[task] = False
         save_user_data()

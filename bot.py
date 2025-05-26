@@ -208,6 +208,16 @@ async def 제거(interaction: discord.Interaction, 닉네임: str):
 async def 숙제(interaction: discord.Interaction):
     await show_homework(interaction)
 
+@tree.command(name="목록", description="등록된 캐릭터 목록을 확인합니다.")
+async def 목록(interaction: discord.Interaction):
+    uid = str(interaction.user.id)
+    user_data = load_all_user_data()
+    if uid not in user_data or not user_data[uid]:
+        await safe_send(interaction, "❌ 등록된 캐릭터가 없습니다.", ephemeral=True)
+    else:
+        char_list = "\n".join(f"- {name}" for name in user_data[uid])
+        await safe_send(interaction, f"📋 현재 등록된 캐릭터 목록:\n{char_list}", ephemeral=True)
+
 async def show_homework(interaction: discord.Interaction):
     uid = str(interaction.user.id)
     user_data = load_all_user_data()

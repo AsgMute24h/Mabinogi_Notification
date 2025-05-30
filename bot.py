@@ -183,11 +183,59 @@ async def safe_send(interaction: discord.Interaction, content=None, ephemeral=Fa
 @tree.command(name="채널", description="알림 및 숙제 채널을 설정합니다.")
 @app_commands.describe(대상="지정할 텍스트 채널")
 async def 채널(interaction: discord.Interaction, 대상: discord.TextChannel):
-    await interaction.response.defer(ephemeral=True)  # 3초 제한 방지 (대기 중 알림)
     global channel_config
     channel_config["alert"] = 대상.id
     save_channel_config()
-    await interaction.followup.send(f"✅ 모든 알림이 <#{대상.id}> 채널에 통합됩니다.", ephemeral=True)
+    await safe_send(interaction, f"✅ 모든 알림이 <#{대상.id}> 채널에 통합됩니다.", ephemeral=True)
+
+@tree.command(name="추가", description="캐릭터를 추가합니다.")
+@app_commands.describe(닉네임="캐릭터 이름")
+async def 추가(interaction: discord.Interaction, 닉네임: str):
+    uid = str(interaction.user.id)
+    user_data = load_all_user_data()
+    if uid not in user_data:
+        user_data[uid] = {}
+    if 닉네임 in user_data[uid]:
+        await safe_send(interaction, f"이미 존재하는 캐릭터입니다: {닉네임}", ephemeral=True)
+        return
+    user_data[uid][닉네임] = {t: False for t in binary_tasks} | count_tasks.copy()
+    save_user_data(uid, user_data[uid])
+    await 숙제(interaction)
+
+@tree.command(name="제거", description="캐릭터를 제거합니다.")
+@app_commands.describe(닉네임="제거할 캐릭터 이름")
+async def 제거(interaction: discord.Interaction, 닉네임: str):
+    uid = str(interaction.user.id)
+    user_data = load_all_user_data()
+    if 닉네임 in user_data.get(uid, {}):
+        del user_data[uid][닉네임]
+        save_user_data(uid, user_data[uid])
+        await 숙제(interaction)
+    else:
+        await safe_send(interaction, f"존재하지 않는 캐릭터입니다: {닉네임}", ephemeral=True)
+
+@tree.command(name="목록", description="등록된 캐릭터 목록을 확인합니다.")
+async def 목록(interaction: discord.Interaction):
+    uid = str(interaction.user.id)
+    user_data = load_all_user_data()
+    if uid not in user_data or not user_data[uid]:
+        await safe_send(interaction, "❌ 등록된 캐릭터가 없습니다.", ephemeral=True)
+    else:
+        char_list = "\n".join(f"- {name}" for name in user_data[uid])
+        await safe_send(interaction, f"📋 현재 등록된 캐릭터 목록:\n{char_list}", ephemeral=True)
+
+@tree.command(name="숙제", description="숙제 현황을 보여줍니다.")
+async def 숙제(interaction: discord.Interaction):
+    uid = str(interaction.user.id)
+    user_data = load_all_user_data()
+    if uid not in user_data or not user_data[uid]:
+        await safe_send(interaction, "❌ 등록된 캐릭터가 없습니다.", ephemeral=True)
+        return
+    current_char = list(user_data[uid].keys())[0]
+    desc = get_task_status_display(user_data[uid][current_char])
+    content = f"[{datetime.now(korea).strftime('%Y/%m/%d')}] {current_char}\n{desc}"
+    view = PageView(uid, user_data=user_data)
+    await safe_send(interaction, content=content, view=view, ephemeral=True)
 
 # 🌟 알림 루프: 메시지를 한 번만 보내고 8분 타이머 돌리기
 @tasks.loop(minutes=1)
@@ -336,7 +384,7 @@ async def on_ready():
     create_table()
     print("✅ 봇 준비 완료됨!")
     try:
-        await tree.sync(guild=discord.Object(id=GUILD_ID))  # 길드 전용 명령어만
+        await tree.sync(guild=discord.Object(id=GUILD_ID))
         print(f"✅ 길드 동기화 완료 (GUILD_ID: {GUILD_ID})")
     except Exception as e:
         print(f"❌ 동기화 오류: {e}")

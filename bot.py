@@ -168,10 +168,12 @@ class PageView(View):
         return interaction.user.id == int(self.user_id)
 
 # 🌟 안전 전송
+from discord.errors import InteractionResponded
+
 async def safe_send(interaction: discord.Interaction, content=None, **kwargs):
     try:
         await interaction.response.send_message(content=content, **kwargs)
-    except discord.errors.NotFound:
+    except InteractionResponded:
         await interaction.edit_original_response(content=content, **kwargs)
 
 # 🌟 채널 설정

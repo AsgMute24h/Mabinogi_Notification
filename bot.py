@@ -183,12 +183,10 @@ async def safe_send(interaction: discord.Interaction, content=None, ephemeral=Fa
 @tree.command(name="채널", description="알림 및 숙제 채널을 설정합니다.")
 @app_commands.describe(대상="지정할 텍스트 채널")
 async def 채널(interaction: discord.Interaction, 대상: discord.TextChannel):
-    await interaction.response.defer(ephemeral=True)  # 3초 이내로 defer
-
+    await interaction.response.defer(ephemeral=True)  # 3초 제한 방지 (대기 중 알림)
     global channel_config
     channel_config["alert"] = 대상.id
     save_channel_config()
-
     await interaction.followup.send(f"✅ 모든 알림이 <#{대상.id}> 채널에 통합됩니다.", ephemeral=True)
 
 # 🌟 알림 루프: 메시지를 한 번만 보내고 8분 타이머 돌리기
@@ -338,7 +336,7 @@ async def on_ready():
     create_table()
     print("✅ 봇 준비 완료됨!")
     try:
-        await tree.sync(guild=discord.Object(id=GUILD_ID))
+        await tree.sync(guild=discord.Object(id=GUILD_ID))  # 길드 전용 명령어만
         print(f"✅ 길드 동기화 완료 (GUILD_ID: {GUILD_ID})")
     except Exception as e:
         print(f"❌ 동기화 오류: {e}")

@@ -247,11 +247,16 @@ async def reset_checker():
 @bot.event
 async def on_ready():
     create_table()
+    print("on_ready 호출됨")
     try:
-        synced = await tree.sync(guild=discord.Object(id=GUILD_ID))
-        print(f"✅ 명령어 동기화 완료: {len(synced)}개 명령어")
+        guild = discord.Object(id=GUILD_ID)
+        # **기존 명령어를 모두 새로 등록** (덮어쓰기)
+        await tree.sync(guild=guild)
+        await tree.sync()
+        print("✅ 명령어 동기화 완료")
     except Exception as e:
         print(f"❌ 명령어 동기화 실패: {e}")
     reset_checker.start()
-
+    notify_time.start()
+    
 bot.run(TOKEN)

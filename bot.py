@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 from keep_alive import keep_alive
 
 # 🌟 환경설정
+TIME_OFFSET = 130 # 2분 10초
 load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL")
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -269,7 +270,7 @@ async def notify_time():
         channel_config["alert_msg_id"] = msg.id
         save_channel_config()
 
-        for remaining in range(480, 0, -1):
+        for remaining in range(480 - TIME_OFFSET, 0, -1):
             m, s = divmod(remaining, 60)
             if is_boss_time:
                 content = (

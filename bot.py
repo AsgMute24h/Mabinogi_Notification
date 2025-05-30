@@ -383,11 +383,15 @@ async def reset_checker():
 async def on_ready():
     create_table()
     print("✅ 봇 준비 완료됨!")
+
     try:
-        await tree.sync(guild=discord.Object(id=GUILD_ID))
-        print(f"✅ 길드 동기화 완료 (GUILD_ID: {GUILD_ID})")
+        synced_global = await tree.sync()
+        print(f"🌍 글로벌 명령어 동기화 완료: {len(synced_global)}개")
+        synced_guild = await tree.sync(guild=discord.Object(id=GUILD_ID))
+        print(f"✅ 길드 명령어 동기화 완료 (GUILD_ID: {GUILD_ID} / {len(synced_guild)}개)")
     except Exception as e:
         print(f"❌ 동기화 오류: {e}")
+
     reset_checker.start()
     notify_time.start()
 

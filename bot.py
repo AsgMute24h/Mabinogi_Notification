@@ -302,7 +302,7 @@ async def notify_time():
         second_line = f"⚔️ 다음 필드 보스는 {next_boss}시입니다." if next_boss else "✅ 오늘의 필드 보스를 모두 처치했습니다!"
         content = (
             f"@everyone\n"
-            f"🔥 5분 뒤 {next_boss}시, 불길한 소환의 결계가 나타납니다! (8:00)\n"
+            f"🔥 5분 뒤 {next_boss or next_hour}시, 불길한 소환의 결계가 나타납니다! (8:00)\n"
             f"{second_line}"
         )
         await msg.edit(content=content)

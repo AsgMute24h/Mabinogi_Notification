@@ -52,7 +52,7 @@ def save_user_data(user_id, data):
             """, (user_id, json.dumps(data, ensure_ascii=False)))
         conn.commit()
 
-# 🌟 config (단일 채널 관리)
+# 🌟 config (알림 채널, 메시지 ID)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_FILE = os.path.join(BASE_DIR, "channel_config.json")
 def load_channel_config():
@@ -61,12 +61,10 @@ def load_channel_config():
             return json.load(f)
     except FileNotFoundError:
         return {}
-
 def save_channel_config():
     global channel_config
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(channel_config, f, ensure_ascii=False, indent=2)
-
 channel_config = load_channel_config()
 
 # 🌟 봇 설정
@@ -104,7 +102,7 @@ def get_task_status_display(char_data):
         "```"
     )
 
-# 🌟 버튼 뷰
+# 🌟 버튼 뷰 (PageView)
 class PageView(View):
     def __init__(self, user_id, page=0, user_data=None):
         super().__init__(timeout=None)
@@ -185,8 +183,6 @@ async def 채널(interaction: discord.Interaction, 대상: discord.TextChannel):
     save_channel_config()
     await safe_send(interaction, f"✅ 모든 알림이 <#{대상.id}> 채널에 통합됩니다.", ephemeral=True)
 
-# 🌟 /추가, /제거, /목록, /숙제 그대로…
-
 # 🌟 알림 루프: 메시지를 한 번만 보내고 8분 타이머 돌리기
 @tasks.loop(minutes=1)
 async def notify_time():
@@ -194,31 +190,114 @@ async def notify_time():
     channel = bot.get_channel(channel_config.get("alert") or CHANNEL_ID)
     if not channel:
         return
+
+    next_hour = now.hour + 1
+    next_boss = next_field_boss_time(next_hour)
+
+    # 55분일 때만 8분 타이머 시작!
     if now.minute == 55:
-        target_hour = (now.hour + 1) % 24
-        msg = await channel.send(
-            f"@everyone\n"
-            f"🔥 5분 뒤 {target_hour}시, 결계가 나타납니다! (8:00)\n"
-            f"⚔️ 5분 뒤 {target_hour}시, 필드 보스가 출현합니다!"
-        )
+        boss_hours = [12, 18, 20, 22]
+        is_boss_time = next_hour in boss_hours
+
+        if is_boss_time:
+            msg = await channel.send(
+                f"@everyone\n"
+                f"🔥 5분 뒤 {next_hour}시, 결계가 나타납니다! (8:00)\n"
+                f"⚔️ 5분 뒤 {next_hour}시, 필드 보스가 출현합니다!"
+            )
+        else:
+            msg = await channel.send(
+                f"@everyone\n"
+                f"🔥 5분 뒤 {next_hour}시, 결계가 나타납니다! (8:00)\n"
+                f"⚔️ 다음 필드 보스는 {next_boss}시입니다."
+            )
+
+        channel_config["alert_msg_id"] = msg.id
+        save_channel_config()
+
         for remaining in range(480, 0, -1):
             m, s = divmod(remaining, 60)
-            await msg.edit(
-                content=(
+            if is_boss_time:
+                content = (
                     f"@everyone\n"
-                    f"🔥 5분 뒤 {target_hour}시, 결계가 나타납니다! ({m}:{s:02d})\n"
-                    f"⚔️ 5분 뒤 {target_hour}시, 필드 보스가 출현합니다!"
+                    f"🔥 5분 뒤 {next_hour}시, 결계가 나타납니다! ({m}:{s:02d})\n"
+                    f"⚔️ 5분 뒤 {next_hour}시, 필드 보스가 출현합니다!"
                 )
-            )
+            else:
+                content = (
+                    f"@everyone\n"
+                    f"🔥 5분 뒤 {next_hour}시, 결계가 나타납니다! ({m}:{s:02d})\n"
+                    f"⚔️ 다음 필드 보스는 {next_boss}시입니다."
+                )
+            await msg.edit(content=content)
             await asyncio.sleep(1)
-        next_boss = next_field_boss_time(target_hour)
-        await msg.edit(
-            content=(
-                f"@everyone\n"
-                f"🔥 5분 뒤 {target_hour}시, 결계가 나타납니다! (종료)\n"
-                f"⏰ 다음 필드 보스는 {next_boss}시입니다."
-            )
+
+        # 종료 시
+        content = (
+            f"@everyone\n"
+            f"🔥 5분 뒤 {next_hour}시, 결계가 나타납니다! (종료)\n"
+            f"⚔️ 다음 필드 보스는 {next_boss}시입니다."
         )
+        await msg.edit(content=content)
+
+# 🌟 메시지 삭제 복구
+@bot.event
+async def on_message_delete(message):
+    alert_channel_id = channel_config.get("alert") or CHANNEL_ID
+    alert_msg_id = channel_config.get("alert_msg_id")
+    if message.channel.id == alert_channel_id and message.id == alert_msg_id:
+        channel = bot.get_channel(alert_channel_id)
+        if not channel:
+            return
+
+        now = datetime.now(korea)
+        next_hour = now.hour + 1
+        next_boss = next_field_boss_time(next_hour)
+        boss_hours = [12, 18, 20, 22]
+        is_boss_time = next_hour in boss_hours
+
+        # 원래처럼 복구 메시지 재전송
+        if is_boss_time:
+            msg = await channel.send(
+                f"@everyone\n"
+                f"🔥 5분 뒤 {next_hour}시, 결계가 나타납니다! (8:00)\n"
+                f"⚔️ 5분 뒤 {next_hour}시, 필드 보스가 출현합니다!"
+            )
+        else:
+            msg = await channel.send(
+                f"@everyone\n"
+                f"🔥 5분 뒤 {next_hour}시, 결계가 나타납니다! (8:00)\n"
+                f"⚔️ 다음 필드 보스는 {next_boss}시입니다."
+            )
+
+        channel_config["alert_msg_id"] = msg.id
+        save_channel_config()
+
+        # 8분 타이머 다시 시작
+        for remaining in range(480, 0, -1):
+            m, s = divmod(remaining, 60)
+            if is_boss_time:
+                content = (
+                    f"@everyone\n"
+                    f"🔥 5분 뒤 {next_hour}시, 결계가 나타납니다! ({m}:{s:02d})\n"
+                    f"⚔️ 5분 뒤 {next_hour}시, 필드 보스가 출현합니다!"
+                )
+            else:
+                content = (
+                    f"@everyone\n"
+                    f"🔥 5분 뒤 {next_hour}시, 결계가 나타납니다! ({m}:{s:02d})\n"
+                    f"⚔️ 다음 필드 보스는 {next_boss}시입니다."
+                )
+            await msg.edit(content=content)
+            await asyncio.sleep(1)
+
+        # 종료 시
+        content = (
+            f"@everyone\n"
+            f"🔥 5분 뒤 {next_hour}시, 결계가 나타납니다! (종료)\n"
+            f"⚔️ 다음 필드 보스는 {next_boss}시입니다."
+        )
+        await msg.edit(content=content)
 
 def next_field_boss_time(current_hour):
     schedule = [12, 18, 20, 22]

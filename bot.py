@@ -177,12 +177,15 @@ class PageView(View):
     async def on_timeout(self):
         self.clear_items()
 
-@tree.command(name="채널", description="알림 또는 숙제 채널을 설정합니다.")
-@app_commands.describe(유형="alert/homework", 채널="지정할 텍스트 채널")
-async def 채널(interaction: discord.Interaction, 유형: Literal["alert", "homework"], 채널: discord.TextChannel):
-    channel_config[유형] = 채널.id
+@tree.command(name="채널", description="알림/숙제 채널을 설정합니다.")
+@app_commands.describe(유형="alert 또는 homework 중 하나", 대상="지정할 텍스트 채널")
+async def 채널(interaction: discord.Interaction, 유형: str, 대상: discord.TextChannel):
+    if 유형 not in ("alert", "homework"):
+        await safe_send(interaction, "❌ 유형은 'alert' 또는 'homework'로 지정해야 합니다.", ephemeral=True)
+        return
+    channel_config[유형] = 대상.id
     save_channel_config()
-    await safe_send(interaction, f"✅ {유형} 채널이 <#{채널.id}>로 설정되었습니다.", ephemeral=True)
+    await safe_send(interaction, f"✅ {유형} 채널이 {대상.mention}으로 설정되었습니다.", ephemeral=True)
 
 @tree.command(name="추가", description="캐릭터를 추가합니다.")
 @app_commands.describe(닉네임="추가할 캐릭터 이름")

@@ -269,61 +269,38 @@ async def notify_time():
 
     next_boss = next_field_boss_time(now)
     is_alert_time = (now.hour, now.minute) in [(11, 55), (17, 55), (19, 55), (21, 55)]
+    is_after_last_boss = now.hour >= 22  # 22시 이후: 오늘의 필드 보스 완료 표시
 
-    if is_alert_time and next_boss:
-        if channel_config.get("alert_msg_id"):
-            try:
-                old_msg = await channel.fetch_message(channel_config["alert_msg_id"])
-                await old_msg.delete()
-            except discord.NotFound:
-                pass
+    if channel_config.get("alert_msg_id"):
+        try:
+            msg = await channel.fetch_message(channel_config["alert_msg_id"])
+        except discord.NotFound:
+            msg = await channel.send("🔔 알림 준비 중...")
+            channel_config["alert_msg_id"] = msg.id
+            save_channel_config()
+    else:
+        msg = await channel.send("🔔 알림 준비 중...")
+        channel_config["alert_msg_id"] = msg.id
+        save_channel_config()
 
-        msg = await channel.send(
+    # 메시지 구성
+    if is_alert_time:
+        content = (
             f"@everyone\n"
             f"🔥 5분 뒤 {next_boss}시, 불길한 소환의 결계가 나타납니다! (8:00)\n"
             f"⚔️ 5분 뒤 {next_boss}시, 필드 보스가 출현합니다!"
         )
-        channel_config["alert_msg_id"] = msg.id
-        save_channel_config()
-
-        for remaining in range(480 - TIME_OFFSET, 0, -1):
-            m, s = divmod(remaining, 60)
-            content = (
-                f"@everyone\n"
-                f"🔥 5분 뒤 {next_boss}시, 불길한 소환의 결계가 나타납니다! ({m}:{s:02d})\n"
-                f"⚔️ 5분 뒤 {next_boss}시, 필드 보스가 출현합니다!"
-            )
-            await msg.edit(content=content)
-            await asyncio.sleep(1)
-
-        await msg.edit(content=(
+    else:
+        content = (
             f"@everyone\n"
-            f"🔥 5분 뒤 {next_boss}시, 불길한 소환의 결계가 나타납니다! (종료)\n"
-            f"⚔️ 오늘 필드 보스가 모두 소환되었습니다."
-        ))
+            f"🔥 5분 뒤 {next_boss}시, 불길한 소환의 결계가 나타납니다! (8:00)\n"
+        )
+        if is_after_last_boss:
+            content += "✅ 오늘의 필드 보스를 모두 처치했습니다!"
+        else:
+            content += f"⚔️ 다음 필드 보스는 {next_boss}시입니다."
 
-    elif not is_alert_time and next_boss:
-        if channel_config.get("alert_msg_id"):
-            try:
-                old_msg = await channel.fetch_message(channel_config["alert_msg_id"])
-                await old_msg.edit(content=f"@everyone\n⚔️ 다음 필드 보스는 {next_boss}시입니다.")
-            except discord.NotFound:
-                pass
-        else:
-            msg = await channel.send(f"@everyone\n⚔️ 다음 필드 보스는 {next_boss}시입니다.")
-            channel_config["alert_msg_id"] = msg.id
-            save_channel_config()
-    elif next_boss is None:
-        if channel_config.get("alert_msg_id"):
-            try:
-                old_msg = await channel.fetch_message(channel_config["alert_msg_id"])
-                await old_msg.edit(content="@everyone\n✅ 오늘의 필드 보스를 모두 처치했습니다!")
-            except discord.NotFound:
-                pass
-        else:
-            msg = await channel.send("@everyone\n✅ 오늘의 필드 보스를 모두 처치했습니다!")
-            channel_config["alert_msg_id"] = msg.id
-            save_channel_config()
+    await msg.edit(content=content)
 
 @bot.event
 async def on_message_delete(message):

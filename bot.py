@@ -66,7 +66,9 @@ def save_channel_config():
     global channel_config
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(channel_config, f, ensure_ascii=False, indent=2)
-    print(f"✅ 채널 설정 저장됨: {channel_config}")  # 로그 추가
+    print(f"✅ 채널 설정 저장됨: {channel_config}")
+
+channel_config = load_channel_config()
 
 # 🌟 봇 설정
 keep_alive()

@@ -259,6 +259,7 @@ async def notify_time():
         return
 
     next_boss = next_field_boss_time(now)
+    display_time = next_boss if next_boss else next_hour
     is_boss_alert_time = (now.hour, now.minute) in [(11, 55), (17, 55), (19, 55), (21, 55)]
 
     # 메시지가 없으면 새로 생성
@@ -279,7 +280,7 @@ async def notify_time():
         # 필드 보스 출현 8분 카운트다운
         content = (
             f"@everyone\n"
-            f"🔥 5분 뒤 {next_boss}시, 불길한 소환의 결계가 나타납니다! (8:00)\n"
+            f"🔥 5분 뒤 {display_time}시, 불길한 소환의 결계가 나타납니다! (8:00)\n"
             f"⚔️ 5분 뒤 {next_boss}시, 필드 보스가 출현합니다!"
         )
         await msg.edit(content=content)
@@ -287,13 +288,13 @@ async def notify_time():
             m, s = divmod(remaining, 60)
             await msg.edit(content=(
                 f"@everyone\n"
-                f"🔥 5분 뒤 {next_boss}시, 불길한 소환의 결계가 나타납니다! ({m}:{s:02d})\n"
+                f"🔥 5분 뒤 {display_time}시, 불길한 소환의 결계가 나타납니다! ({m}:{s:02d})\n"
                 f"⚔️ 5분 뒤 {next_boss}시, 필드 보스가 출현합니다!"
             ))
             await asyncio.sleep(1)
         await msg.edit(content=(
             f"@everyone\n"
-            f"🔥 5분 뒤 {next_boss}시, 불길한 소환의 결계가 나타납니다! (종료)\n"
+            f"🔥 5분 뒤 {display_time}시, 불길한 소환의 결계가 나타납니다! (종료)\n"
             f"⚔️ 오늘의 필드 보스를 모두 처치했습니다!"
         ))
 
@@ -302,7 +303,7 @@ async def notify_time():
         second_line = f"⚔️ 다음 필드 보스는 {next_boss}시입니다." if next_boss else "✅ 오늘의 필드 보스를 모두 처치했습니다!"
         content = (
             f"@everyone\n"
-            f"🔥 5분 뒤 {next_boss or next_hour}시, 불길한 소환의 결계가 나타납니다! (8:00)\n"
+            f"🔥 5분 뒤 {display_time}시, 불길한 소환의 결계가 나타납니다! (8:00)\n"
             f"{second_line}"
         )
         await msg.edit(content=content)
@@ -323,7 +324,7 @@ async def on_message_delete(message):
         if is_alert_time and next_boss:
             msg = await channel.send(
                 f"@everyone\n"
-                f"🔥 5분 뒤 {next_boss}시, 불길한 소환의 결계가 나타납니다! (8:00)\n"
+                f"🔥 5분 뒤 {display_time}시, 불길한 소환의 결계가 나타납니다! (8:00)\n"
                 f"⚔️ 5분 뒤 {next_boss}시, 필드 보스가 출현합니다!"
             )
         elif next_boss:

@@ -260,11 +260,10 @@ async def notify_time():
     if not channel:
         return
 
-    # 55분이 아닌 경우에는 아무것도 하지 않음
+    # 55분에만 알림 실행
     if (now.minute != 55) or (now.hour not in [11, 17, 19, 21]):
         return
 
-    # 55분에만 실행
     next_boss = next_field_boss_time(now)
     display_time = next_boss if next_boss else next_hour
 
@@ -274,7 +273,6 @@ async def notify_time():
         channel_config["alert_msg_id"] = msg.id
         save_channel_config()
 
-    # 메시지 가져오기
     try:
         msg = await channel.fetch_message(channel_config["alert_msg_id"])
     except discord.NotFound:
@@ -282,33 +280,23 @@ async def notify_time():
         channel_config["alert_msg_id"] = msg.id
         save_channel_config()
 
-    # 필드 보스 출현 8분 카운트다운 시작
-    content = (
-        f"@everyone\n"
-        f"🔥 5분 뒤 {display_time}시, 불길한 소환의 결계가 나타납니다! (8:00)\n"
-        f"⚔️ 5분 뒤 {next_boss}시, 필드 보스가 출현합니다!"
-    )
-    await msg.edit(content=content)
+    # 공통 헤드라인
+    headline = f"@everyone\n🔥 5분 뒤 {display_time}시, 불길한 소환의 결계가 나타납니다!"
 
+    # 첫 메시지
+    await msg.edit(content=f"{headline} (8:00)\n⚔️ 5분 뒤 {next_boss}시, 필드 보스가 출현합니다!")
+
+    # 카운트다운
     for remaining in range(480 - TIME_OFFSET, 0, -1):
         m, s = divmod(remaining, 60)
-        countdown_content = (
-            f"@everyone\n"
-            f"🔥 5분 뒤 {display_time}시, 불길한 소환의 결계가 나타납니다! ({m}:{s:02d})\n"
-            f"⚔️ 5분 뒤 {next_boss}시, 필드 보스가 출현합니다!"
-        )
-        await msg.edit(content=countdown_content)
+        countdown_text = f"{headline} ({m}:{s:02d})\n⚔️ 5분 뒤 {next_boss}시, 필드 보스가 출현합니다!"
+        await msg.edit(content=countdown_text)
         await asyncio.sleep(1)
 
-    # 종료 메시지 출력
-    final_content = (
-        f"@everyone\n"
-        f"🔥 5분 뒤 {display_time}시, 불길한 소환의 결계가 나타납니다! (종료)\n"
-        f"⚔️ 오늘의 필드 보스를 모두 처치했습니다!"
-    )
-    await msg.edit(content=final_content)
+    # 종료 메시지
+    await msg.edit(content=f"{headline} (종료)\n⚔️ 오늘의 필드 보스를 모두 처치했습니다!")
 
-    # 3초간 종료 메시지 유지 후 삭제
+    # 3초 유지 후 삭제 및 ID 초기화
     await asyncio.sleep(3)
     await msg.delete()
     channel_config["alert_msg_id"] = None

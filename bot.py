@@ -9,7 +9,7 @@ import pytz
 from dotenv import load_dotenv
 from keep_alive import keep_alive
 import psycopg2
-import asyncio
+from typing import Literal
 
 # 🌟 환경설정 및 DB 연결
 load_dotenv()
@@ -51,7 +51,7 @@ def save_user_data(user_id, data):
             """, (user_id, json.dumps(data, ensure_ascii=False)))
         conn.commit()
 
-# 🌟 config는 파일로 유지
+# 🌟 config 파일
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_FILE = os.path.join(BASE_DIR, "channel_config.json")
 def load_channel_config():
@@ -61,16 +61,13 @@ def load_channel_config():
     except FileNotFoundError:
         return {}
 def save_channel_config():
-    global channel_config
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(channel_config, f, ensure_ascii=False, indent=2)
-
 channel_config = load_channel_config()
 
 # 🌟 디스코드 봇 설정
 keep_alive()
 os.environ["TZ"] = "Asia/Seoul"
-
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
@@ -180,18 +177,12 @@ class PageView(View):
     async def on_timeout(self):
         self.clear_items()
 
-# ⬇️ 명령어들
-
-@tree.command(name="채널", description="알림 및 숙제 채널을 설정합니다.")
-@app_commands.describe(유형="설정할 채널 유형 (alert/homework)", 채널="지정할 채널")
-async def 채널(interaction: discord.Interaction, 유형: str, 채널: discord.TextChannel):
-    global channel_config
-    if 유형 not in ["alert", "homework"]:
-        await safe_send(interaction, "❌ 알림 유형은 'alert' 또는 'homework'로 지정해 주세요.", ephemeral=True)
-        return
+@tree.command(name="채널", description="알림 또는 숙제 채널을 설정합니다.")
+@app_commands.describe(유형="alert/homework", 채널="지정할 텍스트 채널")
+async def 채널(interaction: discord.Interaction, 유형: Literal["alert", "homework"], 채널: discord.TextChannel):
     channel_config[유형] = 채널.id
     save_channel_config()
-    await safe_send(interaction, f"✅ {유형} 채널이 {채널.mention}으로 설정되었습니다.", ephemeral=True)
+    await safe_send(interaction, f"✅ {유형} 채널이 <#{채널.id}>로 설정되었습니다.", ephemeral=True)
 
 @tree.command(name="추가", description="캐릭터를 추가합니다.")
 @app_commands.describe(닉네임="추가할 캐릭터 이름")
@@ -222,16 +213,6 @@ async def 제거(interaction: discord.Interaction, 닉네임: str):
 @tree.command(name="숙제", description="숙제 현황을 다시 보여줍니다.")
 async def 숙제(interaction: discord.Interaction):
     await show_homework(interaction)
-
-@tree.command(name="목록", description="등록된 캐릭터 목록을 확인합니다.")
-async def 목록(interaction: discord.Interaction):
-    uid = str(interaction.user.id)
-    user_data = load_all_user_data()
-    if uid not in user_data or not user_data[uid]:
-        await safe_send(interaction, "❌ 등록된 캐릭터가 없습니다.", ephemeral=True)
-    else:
-        char_list = "\n".join(f"- {name}" for name in user_data[uid])
-        await safe_send(interaction, f"📋 현재 등록된 캐릭터 목록:\n{char_list}", ephemeral=True)
 
 async def show_homework(interaction: discord.Interaction):
     uid = str(interaction.user.id)
@@ -266,11 +247,9 @@ async def reset_checker():
 @bot.event
 async def on_ready():
     create_table()
-    print("on_ready 호출됨")
     try:
-        guild = discord.Object(id=GUILD_ID)
-        await tree.sync(guild=guild)
-        print("✅ 명령어 동기화 완료")
+        synced = await tree.sync(guild=discord.Object(id=GUILD_ID))
+        print(f"✅ 명령어 동기화 완료: {len(synced)}개 명령어")
     except Exception as e:
         print(f"❌ 명령어 동기화 실패: {e}")
     reset_checker.start()

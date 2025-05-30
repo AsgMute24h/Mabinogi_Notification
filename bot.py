@@ -83,6 +83,12 @@ daily_tasks = ["요일 던전", "심층 던전", "검은 구멍", "결계"]
 weekly_tasks = ["필드 보스", "어비스", "레이드"]
 shop_tasks = ["보석 상자", "무료 상품"]
 
+def save_channel_config():
+    global channel_config
+    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+        json.dump(channel_config, f, ensure_ascii=False, indent=2)
+    print(f"✅ 채널 설정 저장됨: {channel_config}")  # 로그 추가
+
 def get_task_status_display(char_data):
     def checkbox(val): return "☑" if val else "☐"
     daily = (

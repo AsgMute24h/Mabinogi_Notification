@@ -174,7 +174,10 @@ async def safe_send(interaction: discord.Interaction, content=None, **kwargs):
     try:
         await interaction.response.send_message(content=content, **kwargs)
     except InteractionResponded:
-        await interaction.edit_original_response(content=content, **kwargs)
+        try:
+            await interaction.edit_original_response(content=content, **kwargs)
+        except discord.NotFound:
+            pass  # 이미 삭제되었거나 존재하지 않으면 무시
 
 # 🌟 채널 설정
 @tree.command(name="채널", description="알림 및 숙제 채널을 설정합니다.")

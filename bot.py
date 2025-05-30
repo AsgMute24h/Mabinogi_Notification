@@ -218,13 +218,18 @@ async def notify_time():
 async def on_ready():
     create_table()
     print("✅ 봇 준비 완료됨!")
+
     try:
+        # 명령어를 글로벌 동기화
         await tree.sync()
+        # (특정 서버에도 동기화 시도)
         await tree.sync(guild=discord.Object(id=GUILD_ID))
         print("✅ Slash 명령어 동기화 완료")
     except Exception as e:
         print(f"❌ Slash 명령어 동기화 실패: {e}")
+
     reset_checker.start()
     notify_time.start()
+
 
 bot.run(TOKEN)

@@ -77,12 +77,6 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 tree = bot.tree
 
-binary_tasks = ["요일 던전", "심층 던전", "필드 보스", "어비스", "레이드", "보석 상자", "무료 상품"]
-count_tasks = {"검은 구멍": 3, "결계": 2}
-daily_tasks = ["요일 던전", "심층 던전", "검은 구멍", "결계"]
-weekly_tasks = ["필드 보스", "어비스", "레이드"]
-shop_tasks = ["보석 상자", "무료 상품"]
-
 async def safe_send(interaction: discord.Interaction, content=None, **kwargs):
     try:
         await interaction.response.send_message(content=content, **kwargs)
@@ -92,7 +86,7 @@ async def safe_send(interaction: discord.Interaction, content=None, **kwargs):
         except Exception as e:
             print(f"[safe_send 오류] {e}")
 
-# 🟡 /채널 명령어 추가!
+# 🟡 /채널 명령어
 @tree.command(name="채널", description="알림 또는 숙제 채널을 설정합니다.")
 @app_commands.describe(유형="알림 또는 숙제", 대상="지정할 텍스트 채널")
 async def 채널(interaction: discord.Interaction, 유형: str, 대상: discord.TextChannel):
@@ -104,16 +98,56 @@ async def 채널(interaction: discord.Interaction, 유형: str, 대상: discord.
     save_channel_config()
     await safe_send(interaction, f"✅ {유형} 채널이 <#{대상.id}>로 설정되었습니다.", ephemeral=True)
 
-# 🟡 이후 나머지 /추가, /제거, /숙제, /목록 등도 여기서 이어가면 됨
-# 예: @tree.command(name="추가", ...), @tree.command(name="목록", ...) 등등
+# 🟡 reset_checker 루프
+@tasks.loop(minutes=1)
+async def reset_checker():
+    now = datetime.now(korea)
+    if now.hour == 6 and now.minute == 0:
+        user_data = load_all_user_data()
+        for uid in user_data:
+            for char in user_data[uid].values():
+                for task in ["요일 던전", "심층 던전", "검은 구멍", "결계"]:
+                    char[task] = False if task not in ["검은 구멍", "결계"] else (3 if task == "검은 구멍" else 2)
+                for task in ["보석 상자", "무료 상품"]:
+                    char[task] = False
+                if now.weekday() == 0:
+                    for task in ["필드 보스", "어비스", "레이드"]:
+                        char[task] = False
+            save_user_data(uid, user_data[uid])
+        print("숙제 리셋 완료")
 
-# (생략된 부분 그대로!)
+# 🟡 notify_time 루프
+@tasks.loop(minutes=1)
+async def notify_time():
+    now = datetime.now(korea)
+    if now.minute == 55:
+        target_hour = (now.hour + 1) % 24
+        channel = bot.get_channel(channel_config.get("알림") or CHANNEL_ID)
+        if channel:
+            if target_hour in range(24):
+                msg = await channel.send(
+                    f"@everyone 🔥 5분 뒤 {target_hour}시, 불길한 소환의 결계가 나타납니다.\n남은 시간: 3:00"
+                )
+                for remaining in range(180, 0, -1):
+                    minutes, seconds = divmod(remaining, 60)
+                    await msg.edit(
+                        content=(
+                            f"@everyone 🔥 5분 뒤 {target_hour}시, 불길한 소환의 결계가 나타납니다.\n"
+                            f"남은 시간: {minutes}:{seconds:02d}"
+                        )
+                    )
+                    await asyncio.sleep(1)
+                await msg.edit(
+                    content=f"@everyone 🔥 5분 뒤 {target_hour}시, 불길한 소환의 결계가 나타납니다.\n⏰ 결계 시간이 종료되었습니다."
+                )
+            if target_hour in {12, 18, 20, 22}:
+                await channel.send(f"@everyone ⚔️ 5분 뒤 {target_hour}시, 필드 보스가 출현합니다.")
 
+# 🟡 on_ready
 @bot.event
 async def on_ready():
     create_table()
     print("✅ 봇 준비 완료됨!")
-
     try:
         await tree.sync()
         await tree.sync(guild=discord.Object(id=GUILD_ID))

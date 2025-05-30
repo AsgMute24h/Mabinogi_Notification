@@ -338,8 +338,6 @@ async def on_ready():
     create_table()
     print("✅ 봇 준비 완료됨!")
     try:
-        await tree.sync()
-        print("🌍 글로벌 동기화 완료")
         await tree.sync(guild=discord.Object(id=GUILD_ID))
         print(f"✅ 길드 동기화 완료 (GUILD_ID: {GUILD_ID})")
     except Exception as e:

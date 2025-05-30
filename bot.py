@@ -52,10 +52,9 @@ def save_user_data(user_id, data):
             """, (user_id, json.dumps(data, ensure_ascii=False)))
         conn.commit()
 
-# 🌟 채널 설정
+# 🌟 config (단일 채널 관리)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_FILE = os.path.join(BASE_DIR, "channel_config.json")
-
 def load_channel_config():
     try:
         with open(CONFIG_FILE, "r", encoding="utf-8") as f:
@@ -73,13 +72,12 @@ channel_config = load_channel_config()
 # 🌟 봇 설정
 keep_alive()
 os.environ["TZ"] = "Asia/Seoul"
-
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 tree = bot.tree
 
-# 🌟 숙제 구성
+# 🌟 숙제 관리
 binary_tasks = ["요일 던전", "심층 던전", "필드 보스", "어비스", "레이드", "보석 상자", "무료 상품"]
 count_tasks = {"검은 구멍": 3, "결계": 2}
 daily_tasks = ["요일 던전", "심층 던전", "검은 구멍", "결계"]
@@ -171,14 +169,21 @@ class PageView(View):
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         return interaction.user.id == int(self.user_id)
 
-# 🌟 안전 전송
+# 🌟 Slash 명령어
 async def safe_send(interaction: discord.Interaction, content=None, **kwargs):
     try:
         await interaction.response.send_message(content=content, **kwargs)
     except discord.errors.NotFound:
         await interaction.edit_original_response(content=content, **kwargs)
 
-# 🌟 Slash 명령어
+@tree.command(name="채널", description="알림 및 숙제 채널을 설정합니다.")
+@app_commands.describe(대상="지정할 텍스트 채널")
+async def 채널(interaction: discord.Interaction, 대상: discord.TextChannel):
+    global channel_config
+    channel_config["alert"] = 대상.id
+    save_channel_config()
+    await safe_send(interaction, f"✅ 모든 알림이 <#{대상.id}> 채널에 통합됩니다.", ephemeral=True)
+
 @tree.command(name="추가", description="캐릭터를 추가합니다.")
 @app_commands.describe(닉네임="캐릭터 이름")
 async def 추가(interaction: discord.Interaction, 닉네임: str):
@@ -233,17 +238,27 @@ async def 숙제(interaction: discord.Interaction):
 async def notify_time():
     now = datetime.now(korea)
     channel = bot.get_channel(channel_config.get("alert") or CHANNEL_ID)
-    if now.minute == 55 and channel:
+    if not channel:
+        return
+
+    if now.minute == 55:
         await channel.send(f"@everyone 🔥 5분 뒤 {now.hour+1}시, 결계가 나타납니다!")
-    elif now.minute == 0 and channel:
+    elif now.minute == 0:
         msg = await channel.send(
-            f"@everyone 🔥 {now.hour}시, 불길한 소환의 결계가 나타납니다!\n남은 시간: 3:00"
+            f"@everyone 🔥 {now.hour}시, 불길한 소환의 결계가 열렸습니다!\n남은 시간: 3:00"
         )
         for remaining in range(180, 0, -1):
             m, s = divmod(remaining, 60)
-            await msg.edit(content=f"@everyone 🔥 {now.hour}시, 불길한 소환의 결계가 나타납니다!\n남은 시간: {m}:{s:02d}")
+            await msg.edit(content=f"@everyone 🔥 {now.hour}시, 결계 중입니다!\n남은 시간: {m}:{s:02d}")
             await asyncio.sleep(1)
-        await msg.edit(content=f"⏰ {now.hour}시 결계 종료되었습니다.")
+        await msg.edit(content=f"⏰ {now.hour}시 결계 종료되었습니다.\n다음 필드 보스는 {next_field_boss_time(now.hour)}시입니다.")
+
+def next_field_boss_time(current_hour):
+    schedule = [12, 18, 20, 22]
+    for t in schedule:
+        if current_hour < t:
+            return t
+    return schedule[0]  # 자정 이후면 12시로 롤링
 
 # 🌟 숙제 리셋
 @tasks.loop(minutes=1)

@@ -1,4 +1,4 @@
 discord.py>=2.3.2
-python-dotenv
 pytz
-psycopg2-binary
+psycopg2
+Flask

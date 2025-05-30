@@ -252,8 +252,8 @@ def next_field_boss_time(now):
 
 @tasks.loop(minutes=1)
 async def notify_time():
-    next_hour = (now.hour + 1) % 24
     now = datetime.now(korea)
+    next_hour = (now.hour + 1) % 24
     channel = bot.get_channel(channel_config.get("alert") or CHANNEL_ID)
     if not channel:
         return

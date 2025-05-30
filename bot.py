@@ -183,10 +183,13 @@ async def safe_send(interaction: discord.Interaction, content=None, ephemeral=Fa
 @tree.command(name="채널", description="알림 및 숙제 채널을 설정합니다.")
 @app_commands.describe(대상="지정할 텍스트 채널")
 async def 채널(interaction: discord.Interaction, 대상: discord.TextChannel):
+    await interaction.response.defer(ephemeral=True)  # 3초 이내로 defer
+
     global channel_config
     channel_config["alert"] = 대상.id
     save_channel_config()
-    await safe_send(interaction, f"✅ 모든 알림이 <#{대상.id}> 채널에 통합됩니다.", ephemeral=True)
+
+    await interaction.followup.send(f"✅ 모든 알림이 <#{대상.id}> 채널에 통합됩니다.", ephemeral=True)
 
 # 🌟 알림 루프: 메시지를 한 번만 보내고 8분 타이머 돌리기
 @tasks.loop(minutes=1)

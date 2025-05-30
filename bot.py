@@ -260,7 +260,7 @@ async def notify_time():
     if not channel:
         return
 
-    # 55분에만 알림 실행
+    # 55분에만 실행
     if (now.minute != 55) or (now.hour not in [11, 17, 19, 21]):
         return
 
@@ -289,8 +289,7 @@ async def notify_time():
     # 카운트다운
     for remaining in range(480 - TIME_OFFSET, 0, -1):
         m, s = divmod(remaining, 60)
-        countdown_text = f"{headline} ({m}:{s:02d})\n⚔️ 5분 뒤 {next_boss}시, 필드 보스가 출현합니다!"
-        await msg.edit(content=countdown_text)
+        await msg.edit(content=f"{headline} ({m}:{s:02d})\n⚔️ 5분 뒤 {next_boss}시, 필드 보스가 출현합니다!")
         await asyncio.sleep(1)
 
     # 종료 메시지

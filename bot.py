@@ -66,7 +66,7 @@ def save_channel_config():
     global channel_config
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(channel_config, f, ensure_ascii=False, indent=2)
-channel_config = load_channel_config()
+    print(f"✅ 채널 설정 저장됨: {channel_config}")  # 로그 추가
 
 # 🌟 봇 설정
 keep_alive()
@@ -82,12 +82,6 @@ count_tasks = {"검은 구멍": 3, "결계": 2}
 daily_tasks = ["요일 던전", "심층 던전", "검은 구멍", "결계"]
 weekly_tasks = ["필드 보스", "어비스", "레이드"]
 shop_tasks = ["보석 상자", "무료 상품"]
-
-def save_channel_config():
-    global channel_config
-    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-        json.dump(channel_config, f, ensure_ascii=False, indent=2)
-    print(f"✅ 채널 설정 저장됨: {channel_config}")  # 로그 추가
 
 def get_task_status_display(char_data):
     def checkbox(val): return "☑" if val else "☐"
@@ -308,7 +302,7 @@ async def notify_time():
         second_line = f"⚔️ 다음 필드 보스는 {next_boss}시입니다." if next_boss else "✅ 오늘의 필드 보스를 모두 처치했습니다!"
         content = (
             f"@everyone\n"
-            f"🔥 5분 뒤 {now.hour+1}시, 불길한 소환의 결계가 나타납니다! (8:00)\n"
+            f"🔥 5분 뒤 {next_boss}시, 불길한 소환의 결계가 나타납니다! (8:00)\n"
             f"{second_line}"
         )
         await msg.edit(content=content)

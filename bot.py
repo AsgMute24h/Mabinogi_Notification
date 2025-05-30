@@ -248,12 +248,20 @@ async def notify_time():
 
     next_hour = now.hour + 1
     next_boss = next_field_boss_time(next_hour)
+    boss_hours = [12, 18, 20, 22]
+    is_boss_time = next_hour in boss_hours
 
-    # 55분일 때만 8분 타이머 시작!
     if now.minute == 55:
-        boss_hours = [12, 18, 20, 22]
-        is_boss_time = next_hour in boss_hours
+        
+        # 기존 메시지를 지우고 새로 보내기
+        if channel_config.get("alert_msg_id"):
+            try:
+                old_msg = await channel.fetch_message(channel_config["alert_msg_id"])
+                await old_msg.delete()
+            except discord.NotFound:
+                pass  # 이미 지워졌으면 무시
 
+        # 새로운 메시지 전송
         if is_boss_time:
             msg = await channel.send(
                 f"@everyone\n"

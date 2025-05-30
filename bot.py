@@ -319,6 +319,8 @@ async def on_message_delete(message):
 
         now = datetime.now(korea)
         next_boss = next_field_boss_time(now)
+        next_hour = (now.hour + 1) % 24
+        display_time = next_boss if next_boss else next_hour
         is_alert_time = (now.hour, now.minute) in [(11, 55), (17, 55), (19, 55), (21, 55)]
 
         if is_alert_time and next_boss:

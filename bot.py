@@ -51,7 +51,7 @@ def save_user_data(user_id, data):
             """, (user_id, json.dumps(data, ensure_ascii=False)))
         conn.commit()
 
-# 🌟 config는 파일로 유지
+# 🌟 채널 설정 파일
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_FILE = os.path.join(BASE_DIR, "channel_config.json")
 def load_channel_config():
@@ -77,6 +77,12 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 tree = bot.tree
 
+binary_tasks = ["요일 던전", "심층 던전", "필드 보스", "어비스", "레이드", "보석 상자", "무료 상품"]
+count_tasks = {"검은 구멍": 3, "결계": 2}
+daily_tasks = ["요일 던전", "심층 던전", "검은 구멍", "결계"]
+weekly_tasks = ["필드 보스", "어비스", "레이드"]
+shop_tasks = ["보석 상자", "무료 상품"]
+
 async def safe_send(interaction: discord.Interaction, content=None, **kwargs):
     try:
         await interaction.response.send_message(content=content, **kwargs)
@@ -86,7 +92,75 @@ async def safe_send(interaction: discord.Interaction, content=None, **kwargs):
         except Exception as e:
             print(f"[safe_send 오류] {e}")
 
-# 🟡 /채널 명령어
+def get_task_status_display(char_data):
+    def checkbox(val): return "☑" if val else "☐"
+    daily = (
+        f"  {checkbox(char_data['요일 던전'])} 요일 던전     {checkbox(char_data['필드 보스'])} 필드 보스\n"
+        f"  {checkbox(char_data['심층 던전'])} 심층 던전     {checkbox(char_data['어비스'])} 어비스 \n"
+        f"  검은 구멍 {char_data['검은 구멍']}/3   {checkbox(char_data['레이드'])} 레이드\n"
+        f"  결계 {char_data['결계']}/2"
+    )
+    shop = f"    {checkbox(char_data['보석 상자'])} 보석 상자 　{checkbox(char_data['무료 상품'])} 무료 상품"
+    return (
+        "```\n"
+        "┌─────────────┐┌─────────────┐\n"
+        f"{daily}\n"
+        "└─────────────┘└─────────────┘\n"
+        "┌────────────────────────────┐\n"
+        f"{shop}\n"
+        "└────────────────────────────┘\n"
+        "```"
+    )
+
+# 캐릭터 숙제 관리 명령어
+@tree.command(name="추가", description="캐릭터를 추가합니다.")
+@app_commands.describe(닉네임="추가할 캐릭터 이름")
+async def 추가(interaction: discord.Interaction, 닉네임: str):
+    uid = str(interaction.user.id)
+    user_data = load_all_user_data()
+    if uid not in user_data:
+        user_data[uid] = {}
+    if 닉네임 in user_data[uid]:
+        await safe_send(interaction, f"이미 존재하는 캐릭터입니다: {닉네임}", ephemeral=True)
+    else:
+        user_data[uid][닉네임] = {t: False for t in binary_tasks} | count_tasks.copy()
+        save_user_data(uid, user_data[uid])
+        await safe_send(interaction, f"✅ {닉네임} 캐릭터를 추가했습니다.", ephemeral=True)
+
+@tree.command(name="제거", description="캐릭터를 제거합니다.")
+@app_commands.describe(닉네임="제거할 캐릭터 이름")
+async def 제거(interaction: discord.Interaction, 닉네임: str):
+    uid = str(interaction.user.id)
+    user_data = load_all_user_data()
+    if uid in user_data and 닉네임 in user_data[uid]:
+        del user_data[uid][닉네임]
+        save_user_data(uid, user_data[uid])
+        await safe_send(interaction, f"🗑️ {닉네임} 캐릭터를 제거했습니다.", ephemeral=True)
+    else:
+        await safe_send(interaction, f"❌ 존재하지 않는 캐릭터입니다: {닉네임}", ephemeral=True)
+
+@tree.command(name="목록", description="등록된 캐릭터 목록을 확인합니다.")
+async def 목록(interaction: discord.Interaction):
+    uid = str(interaction.user.id)
+    user_data = load_all_user_data()
+    if uid not in user_data or not user_data[uid]:
+        await safe_send(interaction, "❌ 등록된 캐릭터가 없습니다.", ephemeral=True)
+    else:
+        char_list = "\n".join(f"- {name}" for name in user_data[uid])
+        await safe_send(interaction, f"📋 현재 등록된 캐릭터 목록:\n{char_list}", ephemeral=True)
+
+@tree.command(name="숙제", description="숙제 현황을 확인합니다.")
+async def 숙제(interaction: discord.Interaction):
+    uid = str(interaction.user.id)
+    user_data = load_all_user_data()
+    if uid not in user_data or not user_data[uid]:
+        await safe_send(interaction, "❌ 등록된 캐릭터가 없습니다. `/추가`로 먼저 등록하세요!", ephemeral=True)
+    else:
+        current_char = list(user_data[uid].keys())[0]
+        desc = get_task_status_display(user_data[uid][current_char])
+        await safe_send(interaction, f"[{datetime.now(korea).strftime('%Y/%m/%d')}] {current_char}\n{desc}", ephemeral=True)
+
+# 채널 설정 명령어
 @tree.command(name="채널", description="알림 또는 숙제 채널을 설정합니다.")
 @app_commands.describe(유형="알림 또는 숙제", 대상="지정할 텍스트 채널")
 async def 채널(interaction: discord.Interaction, 유형: str, 대상: discord.TextChannel):
@@ -98,7 +172,6 @@ async def 채널(interaction: discord.Interaction, 유형: str, 대상: discord.
     save_channel_config()
     await safe_send(interaction, f"✅ {유형} 채널이 <#{대상.id}>로 설정되었습니다.", ephemeral=True)
 
-# 🟡 reset_checker 루프
 @tasks.loop(minutes=1)
 async def reset_checker():
     now = datetime.now(korea)
@@ -106,44 +179,41 @@ async def reset_checker():
         user_data = load_all_user_data()
         for uid in user_data:
             for char in user_data[uid].values():
-                for task in ["요일 던전", "심층 던전", "검은 구멍", "결계"]:
-                    char[task] = False if task not in ["검은 구멍", "결계"] else (3 if task == "검은 구멍" else 2)
-                for task in ["보석 상자", "무료 상품"]:
+                for task in daily_tasks:
+                    char[task] = False if task in binary_tasks else count_tasks[task]
+                for task in shop_tasks:
                     char[task] = False
                 if now.weekday() == 0:
-                    for task in ["필드 보스", "어비스", "레이드"]:
+                    for task in weekly_tasks:
                         char[task] = False
             save_user_data(uid, user_data[uid])
-        print("숙제 리셋 완료")
+        print("✅ 숙제 리셋 완료")
 
-# 🟡 notify_time 루프
 @tasks.loop(minutes=1)
 async def notify_time():
     now = datetime.now(korea)
-    if now.minute == 55:
-        target_hour = (now.hour + 1) % 24
+    if now.minute == 0:
+        target_hour = now.hour
         channel = bot.get_channel(channel_config.get("알림") or CHANNEL_ID)
         if channel:
-            if target_hour in range(24):
-                msg = await channel.send(
-                    f"@everyone 🔥 5분 뒤 {target_hour}시, 불길한 소환의 결계가 나타납니다.\n남은 시간: 3:00"
-                )
-                for remaining in range(180, 0, -1):
-                    minutes, seconds = divmod(remaining, 60)
-                    await msg.edit(
-                        content=(
-                            f"@everyone 🔥 5분 뒤 {target_hour}시, 불길한 소환의 결계가 나타납니다.\n"
-                            f"남은 시간: {minutes}:{seconds:02d}"
-                        )
-                    )
-                    await asyncio.sleep(1)
+            msg = await channel.send(
+                f"@everyone 🔥 {target_hour}시! 불길한 소환의 결계가 나타났습니다.\n남은 시간: 3:00"
+            )
+            for remaining in range(180, 0, -1):
+                minutes, seconds = divmod(remaining, 60)
                 await msg.edit(
-                    content=f"@everyone 🔥 5분 뒤 {target_hour}시, 불길한 소환의 결계가 나타납니다.\n⏰ 결계 시간이 종료되었습니다."
+                    content=(
+                        f"@everyone 🔥 {target_hour}시! 불길한 소환의 결계가 나타났습니다.\n"
+                        f"남은 시간: {minutes}:{seconds:02d}"
+                    )
                 )
-            if target_hour in {12, 18, 20, 22}:
-                await channel.send(f"@everyone ⚔️ 5분 뒤 {target_hour}시, 필드 보스가 출현합니다.")
+                await asyncio.sleep(1)
+            await msg.edit(
+                content=f"@everyone 🔥 {target_hour}시! 불길한 소환의 결계가 종료되었습니다."
+            )
+        if target_hour in {12, 18, 20, 22}:
+            await channel.send(f"@everyone ⚔️ {target_hour}시, 필드 보스가 출현합니다.")
 
-# 🟡 on_ready
 @bot.event
 async def on_ready():
     create_table()
@@ -154,7 +224,6 @@ async def on_ready():
         print("✅ Slash 명령어 동기화 완료")
     except Exception as e:
         print(f"❌ Slash 명령어 동기화 실패: {e}")
-
     reset_checker.start()
     notify_time.start()
 

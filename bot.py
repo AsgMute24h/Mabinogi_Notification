@@ -239,29 +239,20 @@ async def 숙제(interaction: discord.Interaction):
     await safe_send(interaction, content=content, view=view, ephemeral=True)
 
 def next_field_boss_time(now):
-    hour = now.hour
-    minute = now.minute
-
-    if hour == 11 and minute >= 55:
+    hour, minute = now.hour, now.minute
+    if (hour, minute) == (11, 55):
         return 12
-    elif hour == 17 and minute >= 55:
+    elif (hour, minute) == (17, 55):
         return 18
-    elif hour == 19 and minute >= 55:
+    elif (hour, minute) == (19, 55):
         return 20
-    elif hour == 21 and minute >= 55:
+    elif (hour, minute) == (21, 55):
         return 22
-
-    if 12 <= hour < 17:
-        return 18
-    elif 18 <= hour < 19:
-        return 20
-    elif 20 <= hour < 21:
-        return 22
-
     return None
 
 @tasks.loop(minutes=1)
 async def notify_time():
+    next_hour = (now.hour + 1) % 24
     now = datetime.now(korea)
     channel = bot.get_channel(channel_config.get("alert") or CHANNEL_ID)
     if not channel:

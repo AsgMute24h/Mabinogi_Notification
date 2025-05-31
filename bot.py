@@ -307,11 +307,7 @@ async def notify_time():
 
     # 종료 메시지
     await msg.edit(content=f"{headline} (종료)\n{boss_msg}")
-    await asyncio.sleep(3)
-    await msg.delete()
-    channel_config["alert_msg_id"] = None
-    save_channel_config()
-
+    
 @tasks.loop(minutes=1)
 async def reset_checker():
     now = datetime.now(korea)

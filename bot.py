@@ -260,39 +260,53 @@ async def notify_time():
     if not channel:
         return
 
-    if (now.minute != 55) or (now.hour not in [11, 17, 19, 21]):
+    if now.minute != 55:
         return
 
-    next_boss = next_field_boss_time(now)
-    display_time = next_boss if next_boss else next_hour
+    field_boss_hours = [11, 17, 19, 21]
+    def next_field_boss_time(now_hour):
+        for h in field_boss_hours:
+            if h > now_hour:
+                return h
+        return field_boss_hours[0]
+    next_boss_hour = next_field_boss_time(now.hour)
 
-    if not channel_config.get("alert_msg_id"):
-        msg = await channel.send("placeholder")
-        channel_config["alert_msg_id"] = msg.id
+    if now.hour in field_boss_hours:
+        boss_msg = f"⚔️ 5분 뒤 {next_hour}시, 필드 보스가 출현합니다!"
+    elif now.hour >= 22 or now.hour < 11:
+        boss_msg = "⚔️ 오늘 필드 보스를 모두 처치했습니다."
+    else:
+        boss_msg = f"⚔️ 다음 필드 보스는 {next_boss_hour}시입니다."
+
+    headline = f"@everyone\n🔥 5분 뒤 {next_hour}시, 불길한 소환의 결계가 나타납니다!"
+
+    # 1️⃣ 기존 메시지가 있으면 삭제
+    if channel_config.get("alert_msg_id"):
+        try:
+            old_msg = await channel.fetch_message(channel_config["alert_msg_id"])
+            await old_msg.delete()
+        except discord.NotFound:
+            pass
+        channel_config["alert_msg_id"] = None
         save_channel_config()
 
-    try:
-        msg = await channel.fetch_message(channel_config["alert_msg_id"])
-    except discord.NotFound:
-        msg = await channel.send("placeholder")
-        channel_config["alert_msg_id"] = msg.id
-        save_channel_config()
+    # 2️⃣ 새로운 메시지를 전송 (멘션 포함!)
+    msg = await channel.send(f"{headline} (8:00)\n{boss_msg}")
+    channel_config["alert_msg_id"] = msg.id
+    save_channel_config()
 
-    headline = f"@everyone\n🔥 5분 뒤 {display_time}시, 불길한 소환의 결계가 나타납니다!"
-
-    await msg.edit(content=f"{headline} (8:00)\n⚔️ 5분 뒤 {next_boss}시, 필드 보스가 출현합니다!")
-
+    # 카운트다운
     for remaining in range(480 - TIME_OFFSET, 0, -1):
         m, s = divmod(remaining, 60)
         try:
-            await msg.edit(content=f"{headline} ({m}:{s:02d})\n⚔️ 5분 뒤 {next_boss}시, 필드 보스가 출현합니다!")
+            await msg.edit(content=f"{headline} ({m}:{s:02d})\n{boss_msg}")
         except discord.NotFound:
-            print("❌ 카운트다운 메시지가 삭제됨. 카운트다운 종료.")
+            print("❌ 카운트다운 메시지가 삭제됨. 종료.")
             return
         await asyncio.sleep(1)
 
-    await msg.edit(content=f"{headline} (종료)\n⚔️ 오늘의 필드 보스를 모두 처치했습니다!")
-
+    # 종료 메시지
+    await msg.edit(content=f"{headline} (종료)\n{boss_msg}")
     await asyncio.sleep(3)
     await msg.delete()
     channel_config["alert_msg_id"] = None

@@ -288,9 +288,13 @@ async def notify_time():
 
     # 카운트다운
     for remaining in range(480 - TIME_OFFSET, 0, -1):
-        m, s = divmod(remaining, 60)
+    m, s = divmod(remaining, 60)
+    try:
         await msg.edit(content=f"{headline} ({m}:{s:02d})\n⚔️ 5분 뒤 {next_boss}시, 필드 보스가 출현합니다!")
-        await asyncio.sleep(1)
+    except discord.NotFound:
+        print("❌ 카운트다운 메시지가 삭제됨. 카운트다운 종료.")
+        return
+    await asyncio.sleep(1)
 
     # 종료 메시지
     await msg.edit(content=f"{headline} (종료)\n⚔️ 오늘의 필드 보스를 모두 처치했습니다!")
@@ -300,33 +304,6 @@ async def notify_time():
     await msg.delete()
     channel_config["alert_msg_id"] = None
     save_channel_config()
-
-@bot.event
-async def on_message_delete(message):
-    alert_channel_id = channel_config.get("alert") or CHANNEL_ID
-    alert_msg_id = channel_config.get("alert_msg_id")
-
-    # 조건: 알림 채널 & 해당 메시지 삭제만 처리
-    if message.channel.id != alert_channel_id or message.id != alert_msg_id:
-        return
-
-    now = datetime.now(korea)
-    next_boss = next_field_boss_time(now)
-    next_hour = (now.hour + 1) % 24
-    display_time = next_boss if next_boss else next_hour
-    is_alert_time = (now.hour, now.minute) in [(11, 55), (17, 55), (19, 55), (21, 55)]
-
-    # 보스 알림 시간일 때만 메시지 재생성
-    if is_alert_time and next_boss:
-        channel = bot.get_channel(alert_channel_id)
-        if channel:
-            msg = await channel.send(
-                f"@everyone\n"
-                f"🔥 5분 뒤 {display_time}시, 불길한 소환의 결계가 나타납니다! (8:00)\n"
-                f"⚔️ 5분 뒤 {next_boss}시, 필드 보스가 출현합니다!"
-            )
-            channel_config["alert_msg_id"] = msg.id
-            save_channel_config()
 
 # 🌟 숙제 리셋
 @tasks.loop(minutes=1)
@@ -350,6 +327,12 @@ async def reset_checker():
 @bot.event
 async def on_ready():
     create_table()
+
+        if not notify_time.is_running():
+        notify_time.start()
+    if not reset_checker.is_running():
+        reset_checker.start()
+        
     print("✅ 봇 준비 완료됨!")
 
     try:

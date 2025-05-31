@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 from keep_alive import keep_alive
 
 # 🌟 환경설정
-TIME_OFFSET = 130 # 2분 10초
+TIME_OFFSET = 130  # 2분 10초
 load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL")
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -260,14 +260,12 @@ async def notify_time():
     if not channel:
         return
 
-    # 55분에만 실행
     if (now.minute != 55) or (now.hour not in [11, 17, 19, 21]):
         return
 
     next_boss = next_field_boss_time(now)
     display_time = next_boss if next_boss else next_hour
 
-    # 메시지가 없으면 새로 생성
     if not channel_config.get("alert_msg_id"):
         msg = await channel.send("placeholder")
         channel_config["alert_msg_id"] = msg.id
@@ -280,13 +278,10 @@ async def notify_time():
         channel_config["alert_msg_id"] = msg.id
         save_channel_config()
 
-    # 공통 헤드라인
     headline = f"@everyone\n🔥 5분 뒤 {display_time}시, 불길한 소환의 결계가 나타납니다!"
 
-    # 첫 메시지
     await msg.edit(content=f"{headline} (8:00)\n⚔️ 5분 뒤 {next_boss}시, 필드 보스가 출현합니다!")
 
-    # 카운트다운
     for remaining in range(480 - TIME_OFFSET, 0, -1):
         m, s = divmod(remaining, 60)
         try:
@@ -296,16 +291,13 @@ async def notify_time():
             return
         await asyncio.sleep(1)
 
-    # 종료 메시지
     await msg.edit(content=f"{headline} (종료)\n⚔️ 오늘의 필드 보스를 모두 처치했습니다!")
 
-    # 3초 유지 후 삭제 및 ID 초기화
     await asyncio.sleep(3)
     await msg.delete()
     channel_config["alert_msg_id"] = None
     save_channel_config()
 
-# 🌟 숙제 리셋
 @tasks.loop(minutes=1)
 async def reset_checker():
     now = datetime.now(korea)
@@ -323,16 +315,15 @@ async def reset_checker():
             save_user_data(uid, user_data[uid])
         print("✅ 숙제 리셋 완료!")
 
-# 🌟 봇 시작
 @bot.event
 async def on_ready():
     create_table()
 
-        if not notify_time.is_running():
+    if not notify_time.is_running():
         notify_time.start()
     if not reset_checker.is_running():
         reset_checker.start()
-        
+
     print("✅ 봇 준비 완료됨!")
 
     try:
@@ -342,8 +333,5 @@ async def on_ready():
         print(f"✅ 길드 명령어 동기화 완료 (GUILD_ID: {GUILD_ID} / {len(synced_guild)}개)")
     except Exception as e:
         print(f"❌ 동기화 오류: {e}")
-
-    reset_checker.start()
-    notify_time.start()
 
 bot.run(TOKEN)

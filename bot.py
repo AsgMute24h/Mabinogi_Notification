@@ -288,13 +288,13 @@ async def notify_time():
 
     # 카운트다운
     for remaining in range(480 - TIME_OFFSET, 0, -1):
-    m, s = divmod(remaining, 60)
-    try:
-        await msg.edit(content=f"{headline} ({m}:{s:02d})\n⚔️ 5분 뒤 {next_boss}시, 필드 보스가 출현합니다!")
-    except discord.NotFound:
-        print("❌ 카운트다운 메시지가 삭제됨. 카운트다운 종료.")
-        return
-    await asyncio.sleep(1)
+        m, s = divmod(remaining, 60)
+        try:
+            await msg.edit(content=f"{headline} ({m}:{s:02d})\n⚔️ 5분 뒤 {next_boss}시, 필드 보스가 출현합니다!")
+        except discord.NotFound:
+            print("❌ 카운트다운 메시지가 삭제됨. 카운트다운 종료.")
+            return
+        await asyncio.sleep(1)
 
     # 종료 메시지
     await msg.edit(content=f"{headline} (종료)\n⚔️ 오늘의 필드 보스를 모두 처치했습니다!")

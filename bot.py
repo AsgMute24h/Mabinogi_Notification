@@ -183,13 +183,13 @@ async def safe_send(interaction: discord.Interaction, content=None, ephemeral=Fa
             pass
 
 # 🌟 채널 설정
-@tree.command(name="채널", description="알림 및 숙제 채널을 설정합니다.")
+@tree.command(name="채널", description="알림 채널을 설정합니다.")
 @app_commands.describe(대상="지정할 텍스트 채널")
 async def 채널(interaction: discord.Interaction, 대상: discord.TextChannel):
     global channel_config
     channel_config["alert"] = 대상.id
     save_channel_config()
-    await safe_send(interaction, f"✅ 모든 알림이 <#{대상.id}> 채널에 통합됩니다.", ephemeral=True)
+    await safe_send(interaction, f"✅ 알림 채널이 <#{대상.id}>로 설정되었습니다.", ephemeral=True)
 
 @tree.command(name="추가", description="캐릭터를 추가합니다.")
 @app_commands.describe(닉네임="캐릭터 이름")
@@ -254,76 +254,85 @@ def next_field_boss_time(now):
 
 @tasks.loop(minutes=1)
 async def notify_time():
-    now = datetime.now(korea)
-    next_hour = (now.hour + 1) % 24
-    channel = bot.get_channel(channel_config.get("alert") or CHANNEL_ID)
-    if not channel:
-        return
+    try:
+        now = datetime.now(korea)
+        next_hour = (now.hour + 1) % 24
+        channel = bot.get_channel(channel_config.get("alert") or CHANNEL_ID)
+        if not channel:
+            return
 
-    if now.minute != 55:
-        return
+        if now.minute != 55:
+            return
 
-    field_boss_hours = [11, 17, 19, 21]
-    def next_field_boss_time(now_hour):
-        for h in field_boss_hours:
-            if h > now_hour:
-                return h
-        return field_boss_hours[0]
-    next_boss_hour = next_field_boss_time(now.hour)
+        field_boss_hours = [11, 17, 19, 21]
 
-    if now.hour in field_boss_hours:
-        boss_msg = f"⚔️ 5분 뒤 {next_hour}시, 필드 보스가 출현합니다!"
-    elif now.hour >= 22 or now.hour < 11:
-        boss_msg = "⚔️ 오늘 필드 보스를 모두 처치했습니다."
-    else:
-        boss_msg = f"⚔️ 다음 필드 보스는 {next_boss_hour}시입니다."
+        def next_field_boss_time(now_hour):
+            for h in field_boss_hours:
+                if h > now_hour:
+                    return h
+            return field_boss_hours[0]
 
-    headline = f"@everyone\n🔥 5분 뒤 {next_hour}시, 불길한 소환의 결계가 나타납니다!"
+        next_boss_hour = next_field_boss_time(now.hour)
 
-    # 1️⃣ 기존 메시지가 있으면 삭제
-    if channel_config.get("alert_msg_id"):
-        try:
-            old_msg = await channel.fetch_message(channel_config["alert_msg_id"])
-            await old_msg.delete()
-        except discord.NotFound:
-            pass
-        channel_config["alert_msg_id"] = None
+        if now.hour in field_boss_hours:
+            boss_msg = f"⚔️ 5분 뒤 {next_hour}시, 필드 보스가 출현합니다!"
+        elif now.hour >= 22 or now.hour < 11:
+            boss_msg = "⚔️ 오늘 필드 보스를 모두 처치했습니다."
+        else:
+            boss_msg = f"⚔️ 다음 필드 보스는 {next_boss_hour}시입니다."
+
+        headline = f"@everyone\n🔥 5분 뒤 {next_hour}시, 불길한 소환의 결계가 나타납니다!"
+
+        # 기존 메시지가 있으면 삭제
+        if channel_config.get("alert_msg_id"):
+            try:
+                old_msg = await channel.fetch_message(channel_config["alert_msg_id"])
+                await old_msg.delete()
+            except discord.NotFound:
+                pass
+            channel_config["alert_msg_id"] = None
+            save_channel_config()
+
+        # 새로운 메시지 전송 (멘션 포함!)
+        msg = await channel.send(f"{headline} (8:00)\n{boss_msg}")
+        channel_config["alert_msg_id"] = msg.id
         save_channel_config()
 
-    # 2️⃣ 새로운 메시지를 전송 (멘션 포함!)
-    msg = await channel.send(f"{headline} (8:00)\n{boss_msg}")
-    channel_config["alert_msg_id"] = msg.id
-    save_channel_config()
+        # 카운트다운
+        for remaining in range(480 - TIME_OFFSET, 0, -1):
+            m, s = divmod(remaining, 60)
+            try:
+                await msg.edit(content=f"{headline} ({m}:{s:02d})\n{boss_msg}")
+            except discord.NotFound:
+                print("❌ 카운트다운 메시지가 삭제됨. 종료.")
+                return
+            await asyncio.sleep(1)
 
-    # 카운트다운
-    for remaining in range(480 - TIME_OFFSET, 0, -1):
-        m, s = divmod(remaining, 60)
-        try:
-            await msg.edit(content=f"{headline} ({m}:{s:02d})\n{boss_msg}")
-        except discord.NotFound:
-            print("❌ 카운트다운 메시지가 삭제됨. 종료.")
-            return
-        await asyncio.sleep(1)
+        # 종료 메시지 (삭제는 안 하고 다음 루프 때 삭제)
+        await msg.edit(content=f"{headline} (종료)\n{boss_msg}")
 
-    # 종료 메시지
-    await msg.edit(content=f"{headline} (종료)\n{boss_msg}")
-    
+    except Exception as e:
+        print(f"❌ notify_time 루프 중 에러: {e}")
+
 @tasks.loop(minutes=1)
 async def reset_checker():
-    now = datetime.now(korea)
-    if now.hour == 6 and now.minute == 0:
-        user_data = load_all_user_data()
-        for uid in user_data:
-            for char in user_data[uid].values():
-                for task in daily_tasks:
-                    char[task] = False if task in binary_tasks else count_tasks[task]
-                for task in shop_tasks:
-                    char[task] = False
-                if now.weekday() == 0:
-                    for task in weekly_tasks:
+    try:
+        now = datetime.now(korea)
+        if now.hour == 6 and now.minute == 0:
+            user_data = load_all_user_data()
+            for uid in user_data:
+                for char in user_data[uid].values():
+                    for task in daily_tasks:
+                        char[task] = False if task in binary_tasks else count_tasks[task]
+                    for task in shop_tasks:
                         char[task] = False
-            save_user_data(uid, user_data[uid])
-        print("✅ 숙제 리셋 완료!")
+                    if now.weekday() == 0:
+                        for task in weekly_tasks:
+                            char[task] = False
+                save_user_data(uid, user_data[uid])
+            print("✅ 숙제 리셋 완료!")
+    except Exception as e:
+        print(f"❌ reset_checker 루프 중 에러: {e}")
 
 @bot.event
 async def on_ready():
@@ -343,5 +352,17 @@ async def on_ready():
         print(f"✅ 길드 명령어 동기화 완료 (GUILD_ID: {GUILD_ID} / {len(synced_guild)}개)")
     except Exception as e:
         print(f"❌ 동기화 오류: {e}")
+
+# 전역 에러 핸들러
+@bot.event
+async def on_error(event, *args, **kwargs):
+    print(f"❌ 전역 이벤트 에러: {event} / {args} / {kwargs}")
+
+# asyncio 루프 예외 처리
+def handle_exception(loop, context):
+    msg = context.get("exception", context["message"])
+    print(f"❌ asyncio 루프 예외 발생: {msg}")
+
+asyncio.get_event_loop().set_exception_handler(handle_exception)
 
 bot.run(TOKEN)

@@ -183,7 +183,7 @@ async def safe_send(interaction: discord.Interaction, content=None, ephemeral=Fa
             pass
 
 # 🌟 채널 설정
-@tree.command(name="채널", description="알림 채널을 설정합니다.", guild=discord.Object(id=GUILD_ID))
+@tree.command(name="채널", description="알림 채널을 설정합니다.")
 @app_commands.describe(대상="지정할 텍스트 채널")
 async def 채널(interaction: discord.Interaction, 대상: discord.TextChannel):
     global channel_config
@@ -346,9 +346,9 @@ async def on_ready():
     print("✅ 봇 준비 완료됨!")
 
     try:
-        # 글로벌 명령어는 무시하고 강제로 길드에만 다시 동기화
-        synced = await tree.sync(guild=discord.Object(id=GUILD_ID))
-        print(f"✅ 강제 길드 명령어 동기화: {len(synced)}개")
+        # 글로벌로 싱크
+        synced = await tree.sync()
+        print(f"✅ 글로벌 명령어 동기화: {len(synced)}개")
     except Exception as e:
         print(f"❌ 동기화 오류: {e}")
 

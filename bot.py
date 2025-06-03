@@ -264,26 +264,28 @@ async def notify_time():
         if now.minute != 55:
             return
 
+        # 필드 보스 등장 시간
         field_boss_hours = [11, 17, 19, 21]
 
-        def next_field_boss_time(now_hour):
-            for h in field_boss_hours:
-                if h > now_hour:
-                    return h
-            return field_boss_hours[0]
-
-        next_boss_hour = next_field_boss_time(now.hour)
-
-        if now.hour in field_boss_hours:
-            boss_msg = f"⚔️ 5분 뒤 {next_hour}시, 필드 보스가 출현합니다!"
-        elif now.hour >= 22 or now.hour < 11:
+        # 22시 ~ 다음날 11시 전까지는 "모두 처치" 메시지
+        if now.hour >= 22 or now.hour < 11:
             boss_msg = "⚔️ 오늘 필드 보스를 모두 처치했습니다."
+        # 필드 보스가 실제로 나오는 시간 (5분 전)
+        elif now.hour in field_boss_hours:
+            boss_msg = f"⚔️ 5분 뒤 {next_hour}시, 필드 보스가 출현합니다!"
+        # 그 외 시간: 다음 필드 보스 안내
         else:
+            def next_field_boss_time(now_hour):
+                for h in field_boss_hours:
+                    if h > now_hour:
+                        return h
+                return field_boss_hours[0]
+            next_boss_hour = next_field_boss_time(now.hour)
             boss_msg = f"⚔️ 다음 필드 보스는 {next_boss_hour}시입니다."
 
         headline = f"@everyone\n🔥 5분 뒤 {next_hour}시, 불길한 소환의 결계가 나타납니다!"
 
-        # 기존 메시지가 있으면 삭제
+        # 기존 메시지 있으면 삭제
         if channel_config.get("alert_msg_id"):
             try:
                 old_msg = await channel.fetch_message(channel_config["alert_msg_id"])
@@ -293,7 +295,7 @@ async def notify_time():
             channel_config["alert_msg_id"] = None
             save_channel_config()
 
-        # 새로운 메시지 전송 (멘션 포함!)
+        # 새로운 메시지 전송
         msg = await channel.send(f"{headline} (8:00)\n{boss_msg}")
         channel_config["alert_msg_id"] = msg.id
         save_channel_config()
@@ -308,7 +310,7 @@ async def notify_time():
                 return
             await asyncio.sleep(1)
 
-        # 종료 메시지 (삭제는 안 하고 다음 루프 때 삭제)
+        # 종료 메시지
         await msg.edit(content=f"{headline} (종료)\n{boss_msg}")
 
     except Exception as e:

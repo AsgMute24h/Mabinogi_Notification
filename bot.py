@@ -81,17 +81,18 @@ tree = bot.tree
 # 🌟 숙제 관리
 binary_tasks = ["요일 던전", "심층 던전", "필드 보스", "어비스", "레이드", "보석 상자", "무료 상품"]
 count_tasks = {"검은 구멍": 3, "결계": 2, "망령의 탑": 5}
-daily_tasks = ["요일 던전", "심층 던전", "검은 구멍", "결계"]
-weekly_tasks = ["필드 보스", "어비스", "레이드", "망령의 탑"]
+daily_tasks = ["요일 던전", "심층 던전", "검은 구멍", "결계", "망령의 탑"]
+weekly_tasks = ["필드 보스", "어비스", "레이드"]
 shop_tasks = ["보석 상자", "무료 상품"]
 
 def get_task_status_display(char_data):
     def checkbox(val): return "☑" if val else "☐"
     daily = (
-        f"  {checkbox(char_data['요일 던전'])} 요일 던전     {checkbox(char_data['필드 보스'])} 필드 보스\n"
-        f"  {checkbox(char_data['심층 던전'])} 심층 던전     {checkbox(char_data['어비스'])} 어비스\n"
-        f"  검은 구멍 {char_data['검은 구멍']}/3   {checkbox(char_data['레이드'])} 레이드\n"
-        f"  결계 {char_data['결계']}/2       망령의 탑 {char_data['망령의 탑']}/5"
+    f"  {checkbox(char_data['요일 던전'])} 요일 던전     {checkbox(char_data['필드 보스'])} 필드 보스\n"
+    f"  {checkbox(char_data['심층 던전'])} 심층 던전     {checkbox(char_data['어비스'])} 어비스\n"
+    f"  검은 구멍 {char_data['검은 구멍']}/3   {checkbox(char_data['레이드'])} 레이드\n"
+    f"  결계 {char_data['결계']}/2\n"
+    f"  망령의 탑 {char_data['망령의 탑']}/5"
     )
     shop = f"    {checkbox(char_data['보석 상자'])} 보석 상자 　{checkbox(char_data['무료 상품'])} 무료 상품"
     return (
@@ -124,7 +125,7 @@ class PageView(View):
             else:
                 current_char = list(self.user_data[self.user_id].keys())[self.page]
                 task = custom_id.split("|")[1]
-                if task in ["검은 구멍", "결계", "망령의 탑"]:
+                if task in count_tasks:
                     if self.user_data[self.user_id][current_char][task] > 0:
                         self.user_data[self.user_id][current_char][task] -= 1
                     else:
@@ -158,7 +159,7 @@ class PageView(View):
                 style = discord.ButtonStyle.primary if current_char_data[task] != 0 else discord.ButtonStyle.secondary
                 self.add_item(self.create_button(task, style, f"bin|{task}", 2))
             else:
-                style = discord.ButtonStyle.primary if not char_data[task] else discord.ButtonStyle.secondary
+                style = discord.ButtonStyle.primary if not current_char_data[task] else discord.ButtonStyle.secondary
                 self.add_item(self.create_button(task, style, f"bin|{task}", 2))
         for task in ["보석 상자", "무료 상품"]:
             first_char = list(self.user_data[self.user_id].keys())[0]

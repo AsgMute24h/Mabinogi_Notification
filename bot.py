@@ -232,6 +232,7 @@ async def 목록(interaction: discord.Interaction):
         char_list = "\n".join(f"- {name}" for name in user_data[uid])
         await safe_send(interaction, f"📋 현재 등록된 캐릭터 목록:\n{char_list}", ephemeral=True)
 
+# ✅ 이 아래로 들여쓰기 없이!
 @tree.command(name="숙제", description="숙제 현황을 보여줍니다.")
 async def 숙제(interaction: discord.Interaction):
     uid = str(interaction.user.id)
@@ -239,6 +240,16 @@ async def 숙제(interaction: discord.Interaction):
     if uid not in user_data or not user_data[uid]:
         await safe_send(interaction, "❌ 등록된 캐릭터가 없습니다.", ephemeral=True)
         return
+
+    for char_name in user_data[uid]:
+        for task in binary_tasks:
+            if task not in user_data[uid][char_name]:
+                user_data[uid][char_name][task] = False
+        for task in count_tasks:
+            if task not in user_data[uid][char_name]:
+                user_data[uid][char_name][task] = count_tasks[task]
+    save_user_data(uid, user_data[uid])
+
     current_char = list(user_data[uid].keys())[0]
     desc = get_task_status_display(user_data[uid][current_char])
     content = f"[{datetime.now(korea).strftime('%Y/%m/%d')}] {current_char}\n{desc}"

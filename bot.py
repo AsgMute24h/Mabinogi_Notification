@@ -151,10 +151,10 @@ class PageView(View):
         for task in ["요일 던전", "심층 던전"]:
             style = discord.ButtonStyle.success if not current_char_data[task] else discord.ButtonStyle.secondary
             self.add_item(self.create_button(task, style, f"bin|{task}", 1))
-        for task in ["검은 구멍", "결계"]:
+        for task in ["검은 구멍", "결계", "망령의 탑"]:
             style = discord.ButtonStyle.success if current_char_data[task] != 0 else discord.ButtonStyle.secondary
             self.add_item(self.create_button(task, style, f"bin|{task}", 1))
-        for task in ["필드 보스", "어비스", "레이드", "망령의 탑"]:
+        for task in ["필드 보스", "어비스", "레이드"]:
             if task in count_tasks:
                 style = discord.ButtonStyle.primary if current_char_data[task] != 0 else discord.ButtonStyle.secondary
                 self.add_item(self.create_button(task, style, f"bin|{task}", 2))

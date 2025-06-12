@@ -8,15 +8,15 @@ import os
 import json
 import pytz
 import asyncio
-import psycopg2
+import sqlite3
 from dotenv import load_dotenv
 from keep_alive import keep_alive
 import math
 
 # 🌟 환경설정
+DB_PATH = "data.db"
 TIME_OFFSET = 130  # 2분 10초
 load_dotenv()
-DATABASE_URL = os.getenv("DATABASE_URL")
 TOKEN = os.getenv("DISCORD_TOKEN")
 CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
 GUILD_ID = int(os.getenv("GUILD_ID"))
@@ -24,35 +24,34 @@ korea = pytz.timezone("Asia/Seoul")
 
 # 🌟 DB 연결
 def get_conn():
-    return psycopg2.connect(DATABASE_URL, sslmode="require")
+    return sqlite3.connect(DB_PATH)
 
 def create_table():
     with get_conn() as conn:
-        with conn.cursor() as cur:
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS user_data (
-                    user_id BIGINT PRIMARY KEY,
-                    data JSONB NOT NULL
-                );
-            """)
+        cur = conn.cursor()
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS user_data (
+                user_id TEXT PRIMARY KEY,
+                data TEXT NOT NULL
+            );
+        """)
         conn.commit()
 
 def load_all_user_data():
     with get_conn() as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT user_id, data FROM user_data;")
-            rows = cur.fetchall()
-            return {str(row[0]): row[1] for row in rows}
+        cur = conn.cursor()
+        cur.execute("SELECT user_id, data FROM user_data;")
+        rows = cur.fetchall()
+        return {str(row[0]): json.loads(row[1]) for row in rows}
 
 def save_user_data(user_id, data):
     with get_conn() as conn:
-        with conn.cursor() as cur:
-            cur.execute("""
-                INSERT INTO user_data (user_id, data)
-                VALUES (%s, %s)
-                ON CONFLICT (user_id)
-                DO UPDATE SET data = EXCLUDED.data;
-            """, (user_id, json.dumps(data, ensure_ascii=False)))
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO user_data (user_id, data)
+            VALUES (?, ?)
+            ON CONFLICT(user_id) DO UPDATE SET data=excluded.data;
+        """, (user_id, json.dumps(data, ensure_ascii=False)))
         conn.commit()
 
 # 🌟 config (알림 채널, 메시지 ID)

@@ -194,60 +194,13 @@ async def safe_send(interaction: discord.Interaction, content=None, ephemeral=Fa
             await asyncio.sleep(retry_after)
             await interaction.followup.send(content=content, ephemeral=ephemeral, **kwargs)
 
-# 🌟 채널 설정
-@tree.command(name="채널", description="알림 채널을 설정합니다.")
-@app_commands.describe(대상="지정할 텍스트 채널")
-async def 채널(interaction: discord.Interaction, 대상: discord.TextChannel):
-    global channel_config
-    channel_config["alert"] = 대상.id
-    save_channel_config()
-    await safe_send(interaction, f"✅ 알림 채널이 <#{대상.id}>로 설정되었습니다.", ephemeral=True)
-
-@tree.command(name="추가", description="캐릭터를 추가합니다.")
-@app_commands.describe(닉네임="캐릭터 이름")
-async def 추가(interaction: discord.Interaction, 닉네임: str):
-    uid = str(interaction.user.id)
-    user_data = load_all_user_data()
-    if uid not in user_data:
-        user_data[uid] = {}
-    if 닉네임 in user_data[uid]:
-        await safe_send(interaction, f"이미 존재하는 캐릭터입니다: {닉네임}", ephemeral=True)
-        return
-    user_data[uid][닉네임] = {t: False for t in binary_tasks} | count_tasks.copy()
-    save_user_data(uid, user_data[uid])
-    await 숙제(interaction)
-
-@tree.command(name="제거", description="캐릭터를 제거합니다.")
-@app_commands.describe(닉네임="제거할 캐릭터 이름")
-async def 제거(interaction: discord.Interaction, 닉네임: str):
-    uid = str(interaction.user.id)
-    user_data = load_all_user_data()
-    if 닉네임 in user_data.get(uid, {}):
-        del user_data[uid][닉네임]
-        save_user_data(uid, user_data[uid])
-        await 숙제(interaction)
-    else:
-        await safe_send(interaction, f"존재하지 않는 캐릭터입니다: {닉네임}", ephemeral=True)
-
-@tree.command(name="목록", description="등록된 캐릭터 목록을 확인합니다.")
-async def 목록(interaction: discord.Interaction):
-    uid = str(interaction.user.id)
-    user_data = load_all_user_data()
-    if uid not in user_data or not user_data[uid]:
-        await safe_send(interaction, "❌ 등록된 캐릭터가 없습니다.", ephemeral=True)
-    else:
-        char_list = "\n".join(f"- {name}" for name in user_data[uid])
-        await safe_send(interaction, f"📋 현재 등록된 캐릭터 목록:\n{char_list}", ephemeral=True)
-
-# ✅ 이 아래로 들여쓰기 없이!
-@tree.command(name="숙제", description="숙제 현황을 보여줍니다.")
-async def 숙제(interaction: discord.Interaction):
+# 🌟 숙제 명령 함수 분리
+async def show_homework(interaction):
     uid = str(interaction.user.id)
     user_data = load_all_user_data()
     if uid not in user_data or not user_data[uid]:
         await safe_send(interaction, "❌ 등록된 캐릭터가 없습니다.", ephemeral=True)
         return
-
     for char_name in user_data[uid]:
         for task in binary_tasks:
             if task not in user_data[uid][char_name]:
@@ -263,6 +216,67 @@ async def 숙제(interaction: discord.Interaction):
     view = PageView(uid, user_data=user_data)
     await safe_send(interaction, content=content, view=view, ephemeral=True)
 
+async def register_character(interaction, 닉네임):
+    uid = str(interaction.user.id)
+    user_data = load_all_user_data()
+    if uid not in user_data:
+        user_data[uid] = {}
+    if 닉네임 in user_data[uid]:
+        await safe_send(interaction, f"이미 존재하는 캐릭터입니다: {닉네임}", ephemeral=True)
+        return
+    user_data[uid][닉네임] = {t: False for t in binary_tasks} | count_tasks.copy()
+    save_user_data(uid, user_data[uid])
+    await show_homework(interaction)
+
+async def remove_character(interaction, 닉네임):
+    uid = str(interaction.user.id)
+    user_data = load_all_user_data()
+    if 닉네임 in user_data.get(uid, {}):
+        del user_data[uid][닉네임]
+        save_user_data(uid, user_data[uid])
+        await show_homework(interaction)
+    else:
+        await safe_send(interaction, f"존재하지 않는 캐릭터입니다: {닉네임}", ephemeral=True)
+
+async def list_characters(interaction):
+    uid = str(interaction.user.id)
+    user_data = load_all_user_data()
+    if uid not in user_data or not user_data[uid]:
+        await safe_send(interaction, "❌ 등록된 캐릭터가 없습니다.", ephemeral=True)
+    else:
+        char_list = "\n".join(f"- {name}" for name in user_data[uid])
+        await safe_send(interaction, f"📋 현재 등록된 캐릭터 목록:\n{char_list}", ephemeral=True)
+
+async def set_alert_channel(interaction, 대상):
+    global channel_config
+    channel_config["alert"] = 대상.id
+    save_channel_config()
+    await safe_send(interaction, f"✅ 알림 채널이 <#{대상.id}>로 설정되었습니다.", ephemeral=True)
+
+# 🌟 명령어 핸들러
+@tree.command(name="숙제", description="숙제 현황을 보여줍니다.")
+async def 숙제(interaction: discord.Interaction):
+    await show_homework(interaction)
+
+@tree.command(name="추가", description="캐릭터를 추가합니다.")
+@app_commands.describe(닉네임="캐릭터 이름")
+async def 추가(interaction: discord.Interaction, 닉네임: str):
+    await register_character(interaction, 닉네임)
+
+@tree.command(name="제거", description="캐릭터를 제거합니다.")
+@app_commands.describe(닉네임="제거할 캐릭터 이름")
+async def 제거(interaction: discord.Interaction, 닉네임: str):
+    await remove_character(interaction, 닉네임)
+
+@tree.command(name="목록", description="등록된 캐릭터 목록을 확인합니다.")
+async def 목록(interaction: discord.Interaction):
+    await list_characters(interaction)
+
+@tree.command(name="채널", description="알림 채널을 설정합니다.")
+@app_commands.describe(대상="지정할 텍스트 채널")
+async def 채널(interaction: discord.Interaction, 대상: discord.TextChannel):
+    await set_alert_channel(interaction, 대상)
+    
 def next_field_boss_time(now):
     hour, minute = now.hour, now.minute
     if (hour, minute) == (11, 55):

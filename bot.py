@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands, tasks
 from discord import app_commands
 from discord.ui import View, Button
+from discord.errors import HTTPException
 from datetime import datetime
 import os
 import json
@@ -10,6 +11,7 @@ import asyncio
 import psycopg2
 from dotenv import load_dotenv
 from keep_alive import keep_alive
+import math
 
 # 🌟 환경설정
 TIME_OFFSET = 130  # 2분 10초
@@ -186,6 +188,12 @@ async def safe_send(interaction: discord.Interaction, content=None, ephemeral=Fa
             await interaction.edit_original_response(content=content, **kwargs)
         except discord.NotFound:
             pass
+    except HTTPException as e:
+        if e.status == 429:
+            retry_after = int(e.response.headers.get("Retry-After", "5"))
+            print(f"⏳ Rate limit hit. Retrying after {retry_after} seconds...")
+            await asyncio.sleep(retry_after)
+            await interaction.followup.send(content=content, ephemeral=ephemeral, **kwargs)
 
 # 🌟 채널 설정
 @tree.command(name="채널", description="알림 채널을 설정합니다.")
@@ -317,17 +325,20 @@ async def notify_time():
         save_channel_config()
 
         # 카운트다운
-        for remaining in range(480 - TIME_OFFSET, 0, -1):
-            m, s = divmod(remaining, 60)
+        for remaining in range(480, 0, -10):
+            elapsed = 480 - remaining
+            percent = int((elapsed / 480) * 100)
+            minutes, seconds = divmod(elapsed, 60)
+            progress_bar = f"[{'█' * (percent // 10)}{' ' * (10 - percent // 10)}] {minutes}:{seconds:02d}"
             try:
-                await msg.edit(content=f"{headline} ({m}:{s:02d})\n{boss_msg}")
+                await msg.edit(content=f"{headline} {progress_bar}\n{boss_msg}")
             except discord.NotFound:
-                print("❌ 카운트다운 메시지가 삭제됨. 종료.")
+                await msg.edit(content=f"{headline} [종료]\n{boss_msg}")
                 return
-            await asyncio.sleep(1)
+            await asyncio.sleep(10)
 
         # 종료 메시지
-        await msg.edit(content=f"{headline} (종료)\n{boss_msg}")
+        await msg.edit(content=f"{headline} [완료 ✅]\n{boss_msg}")
 
     except Exception as e:
         print(f"❌ notify_time 루프 중 에러: {e}")

@@ -12,6 +12,7 @@ import sqlite3
 from dotenv import load_dotenv
 from keep_alive import keep_alive
 import math
+import shutil
 
 # 🌟 환경설정
 DB_PATH = "data.db"
@@ -293,36 +294,28 @@ def next_field_boss_time(now):
 async def notify_time():
     try:
         now = datetime.now(korea)
-        next_hour = (now.hour + 1) % 24
         channel = bot.get_channel(channel_config.get("alert") or CHANNEL_ID)
-        if not channel:
+        if not channel or now.minute != 55:
             return
 
-        if now.minute != 55:
-            return
-
-        # 필드 보스 등장 시간
+        next_hour = (now.hour + 1) % 24
         field_boss_hours = [11, 17, 19, 21]
 
-        # 22시 ~ 다음날 11시 전까지는 "모두 처치" 메시지
         if now.hour >= 22 or now.hour < 11:
             boss_msg = "⚔️ 오늘 필드 보스를 모두 처치했습니다."
-        # 필드 보스가 실제로 나오는 시간 (5분 전)
         elif now.hour in field_boss_hours:
             boss_msg = f"⚔️ 5분 뒤 {next_hour}시, 필드 보스가 출현합니다!"
-        # 그 외 시간: 다음 필드 보스 안내
         else:
             def next_field_boss_time(now_hour):
                 for h in field_boss_hours:
                     if h > now_hour:
                         return h
                 return field_boss_hours[0]
-            next_boss_hour = next_field_boss_time(now.hour)
-            boss_msg = f"⚔️ 다음 필드 보스는 {next_boss_hour}시입니다."
+            boss_msg = f"⚔️ 다음 필드 보스는 {next_field_boss_time(now.hour)}시입니다."
 
         headline = f"@everyone\n🔥 5분 뒤 {next_hour}시, 불길한 소환의 결계가 나타납니다!"
 
-        # 기존 메시지 있으면 삭제
+        # 이전 메시지 삭제
         if channel_config.get("alert_msg_id"):
             try:
                 old_msg = await channel.fetch_message(channel_config["alert_msg_id"])
@@ -332,29 +325,28 @@ async def notify_time():
             channel_config["alert_msg_id"] = None
             save_channel_config()
 
-        # 새로운 메시지 전송
+        # 초기 메시지 전송
         msg = await channel.send(f"{headline} (8:00)\n{boss_msg}")
         channel_config["alert_msg_id"] = msg.id
         save_channel_config()
 
-        # 카운트다운
-        for remaining in range(480, 0, -10):
-            elapsed = 480 - remaining
-            percent = int((elapsed / 480) * 100)
-            minutes, seconds = divmod(elapsed, 60)
-            progress_bar = f"[{'█' * (percent // 10)}{' ' * (10 - percent // 10)}] {minutes}:{seconds:02d}"
-            try:
-                await msg.edit(content=f"{headline} {progress_bar}\n{boss_msg}")
-            except discord.NotFound:
-                await msg.edit(content=f"{headline} [종료]\n{boss_msg}")
-                return
-            await asyncio.sleep(10)
+        # 8분 → 0분 카운트다운
+        for remaining in range(480, 0, -1):
+            minutes, seconds = divmod(remaining, 60)
+            time_display = f"{minutes}:{seconds:02d}"
 
-        # 종료 메시지
-        await msg.edit(content=f"{headline} [완료 ✅]\n{boss_msg}")
+            try:
+                await msg.edit(content=f"{headline} ({time_display})\n{boss_msg}")
+            except discord.NotFound:
+                return
+
+            await asyncio.sleep(1)  # 백그라운드 지연 방어를 위해 1초 단위 반복
+
+        # 완료 메시지
+        await msg.edit(content=f"{headline} [종료]\n{boss_msg}")
 
     except Exception as e:
-        print(f"❌ notify_time 루프 중 에러: {e}")
+        print(f"❌ notify_time 에러: {e}")
 
 @tasks.loop(minutes=1)
 async def reset_checker():
@@ -376,12 +368,26 @@ async def reset_checker():
     except Exception as e:
         print(f"❌ reset_checker 루프 중 에러: {e}")
 
+@tasks.loop(hours=6)
+async def backup_files():
+    try:
+        now_str = datetime.now(korea).strftime("%Y%m%d_%H%M")
+        db_backup = f"backup/{now_str}_data.db"
+        config_backup = f"backup/{now_str}_channel_config.json"
+        shutil.copy("data.db", db_backup)
+        shutil.copy("channel_config.json", config_backup)
+        print(f"✅ 자동 백업 완료: {db_backup}, {config_backup}")
+    except Exception as e:
+        print(f"❌ 백업 중 오류 발생: {e}")
+
 @bot.event
 async def on_ready():
     create_table()
 
     if not notify_time.is_running():
         notify_time.start()
+    if not backup_files.is_running():
+        backup_files.start()
     if not reset_checker.is_running():
         reset_checker.start()
 

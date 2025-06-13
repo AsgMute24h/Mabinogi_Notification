@@ -4,6 +4,7 @@ from discord import app_commands
 from discord.ui import View, Button
 from discord.errors import HTTPException
 from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import json
 import pytz
@@ -330,20 +331,30 @@ async def notify_time():
         channel_config["alert_msg_id"] = msg.id
         save_channel_config()
 
-        # 8분 → 0분 카운트다운
-        for remaining in range(480, 0, -1):
-            minutes, seconds = divmod(remaining, 60)
+        # 8분 → 0분 카운트다운 (절대 시간 기준)
+        start_time = datetime.now()
+        end_time = start_time + timedelta(seconds=480)
+
+        while True:
+            now = datetime.now()
+            remaining = (end_time - now).total_seconds()
+
+            if remaining <= 0:
+                try:
+                    await msg.edit(content=f"{headline} [종료]\n{boss_msg}")
+                except discord.NotFound:
+                    pass
+                break
+
+            minutes, seconds = divmod(int(remaining), 60)
             time_display = f"{minutes}:{seconds:02d}"
 
             try:
                 await msg.edit(content=f"{headline} ({time_display})\n{boss_msg}")
             except discord.NotFound:
-                return
+                break
 
-            await asyncio.sleep(1)  # 백그라운드 지연 방어를 위해 1초 단위 반복
-
-        # 완료 메시지
-        await msg.edit(content=f"{headline} [종료]\n{boss_msg}")
+            await asyncio.sleep(1)
 
     except Exception as e:
         print(f"❌ notify_time 에러: {e}")

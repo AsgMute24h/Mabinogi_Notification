@@ -277,7 +277,8 @@ async def on_error(event, *args, **kwargs):
     print(f"❌ 전역 이벤트 에러: {event} / {args} / {kwargs}")
 
 def handle_exception(loop, context):
-    msg = context.get(\"exception\", context[\"message\"])\n    print(f"❌ asyncio 예외: {msg}")
+    msg = context.get("exception", context["message"])
+    print(f"❌ asyncio 예외: {msg}")
 
 asyncio.get_event_loop().set_exception_handler(handle_exception)
 

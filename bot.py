@@ -293,14 +293,19 @@ async def reset_checker():
 @bot.event
 async def on_ready():
     create_table()
-
-    # 🌟 Termux에서 화면 꺼짐 방지 설정
     try:
         import subprocess
         subprocess.run(["termux-wake-lock"])
         print("✅ termux-wake-lock executed.")
     except Exception as e:
         print(f"❌ termux-wake-lock 실행 실패: {e}")
+
+    # 명령어 글로벌 등록
+    try:
+        synced = await tree.sync()  # 🌍 모든 서버에 글로벌로 등록
+        print(f"✅ 글로벌 커맨드 동기화 완료: {len(synced)}개 명령어")
+    except Exception as e:
+        print(f"❌ 글로벌 명령어 동기화 실패: {e}")
 
     if not reset_checker.is_running():
         reset_checker.start()

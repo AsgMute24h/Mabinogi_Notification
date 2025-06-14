@@ -236,13 +236,31 @@ async def alert_checker():
     now = datetime.now(korea)
     if now.minute != 55:
         return
+
+    field_boss_hours = [11, 17, 19, 21]
+    next_hour = (now.hour + 1) % 24
+
+    if now.hour in field_boss_hours:
+        boss_msg = f"⚔️ 5분 뒤 {next_hour}시, 필드 보스가 출현합니다!"
+    elif now.hour >= 22 or now.hour < 11:
+        boss_msg = "⚔️ 오늘 필드 보스를 모두 처치했습니다."
+    else:
+        for h in field_boss_hours:
+            if h > now.hour:
+                boss_msg = f"⚔️ 다음 필드 보스는 {h}시입니다."
+                break
+        else:
+            boss_msg = f"⚔️ 다음 필드 보스는 {field_boss_hours[0]}시입니다."
+
+    headline = f"🔥 5분 뒤 {next_hour}시, 불길한 소환의 결계가 나타납니다!"
+
     all_data = load_all_user_data()
     for uid, user in all_data.items():
         if not user.get("alert_enabled", True):
             continue
         try:
             user_obj = await bot.fetch_user(int(uid))
-            msg = await user_obj.send(f"🌀 {now.hour+1}시 결계/필드보스 알림입니다!")
+            await user_obj.send(f"{headline}\n{boss_msg}")
         except Exception as e:
             print(f"❌ {uid}에게 DM 실패: {e}")
 

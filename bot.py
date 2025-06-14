@@ -197,8 +197,8 @@ async def 숙제(interaction: discord.Interaction):
         await interaction.response.send_message("❌ 등록된 캐릭터가 없습니다. `/추가` 명령으로 먼저 등록해 주세요.", ephemeral=True)
         return
 
-    # ✅ 내용 없는 에페메랄 메시지 (유저에겐 안 보임)
-    await interaction.response.send_message("‎", ephemeral=True)  # 유니코드 공백 문자
+    # ✅ 필수 응답
+    await interaction.response.send_message("📝 숙제 현황이 전송되었습니다.", ephemeral=True)
 
     # ✅ 이후 DM 전송
     await send_or_update_dm(interaction.user, uid, all_data)

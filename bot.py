@@ -10,15 +10,16 @@ import sqlite3
 from dotenv import load_dotenv
 import shutil
 
-# 🌟 환경설정
+# 🌟 설정
 DB_PATH = "data.db"
 BACKUP_DIR = "backup"
-BACKUP_TRIGGER = True
+ALERT_FILE = "alert_config.json"
+korea = pytz.timezone("Asia/Seoul")
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
-korea = pytz.timezone("Asia/Seoul")
 
 # 🌟 DB 연결
+os.makedirs(BACKUP_DIR, exist_ok=True)
 def get_conn():
     return sqlite3.connect(DB_PATH)
 
@@ -29,7 +30,8 @@ def create_table():
             CREATE TABLE IF NOT EXISTS user_data (
                 user_id TEXT PRIMARY KEY,
                 data TEXT NOT NULL,
-                last_msg_id TEXT
+                last_msg_id TEXT,
+                alert_enabled INTEGER DEFAULT 1
             );
         """)
         conn.commit()
@@ -37,27 +39,29 @@ def create_table():
 def load_all_user_data():
     with get_conn() as conn:
         cur = conn.cursor()
-        cur.execute("SELECT user_id, data, last_msg_id FROM user_data;")
+        cur.execute("SELECT user_id, data, last_msg_id, alert_enabled FROM user_data;")
         rows = cur.fetchall()
         return {
             str(row[0]): {
                 "data": json.loads(row[1]),
-                "last_msg_id": row[2]
+                "last_msg_id": row[2],
+                "alert_enabled": bool(row[3])
             } for row in rows
         }
 
-def save_user_data(uid, data, last_msg_id=None):
-    os.makedirs(BACKUP_DIR, exist_ok=True)
+def save_user_data(uid, data, last_msg_id=None, alert_enabled=True):
     with get_conn() as conn:
         cur = conn.cursor()
         cur.execute("""
-            INSERT INTO user_data (user_id, data, last_msg_id)
-            VALUES (?, ?, ?)
-            ON CONFLICT(user_id) DO UPDATE SET data=excluded.data, last_msg_id=excluded.last_msg_id;
-        """, (uid, json.dumps(data, ensure_ascii=False), last_msg_id))
+            INSERT INTO user_data (user_id, data, last_msg_id, alert_enabled)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(user_id) DO UPDATE SET
+                data=excluded.data,
+                last_msg_id=excluded.last_msg_id,
+                alert_enabled=excluded.alert_enabled;
+        """, (uid, json.dumps(data, ensure_ascii=False), last_msg_id, int(alert_enabled)))
         conn.commit()
 
-    # 변경 시마다 즉시 백업
     now_str = datetime.now(korea).strftime("%Y%m%d_%H%M%S")
     db_backup = f"{BACKUP_DIR}/{now_str}_data.db"
     shutil.copy(DB_PATH, db_backup)
@@ -71,21 +75,17 @@ shop_tasks = ["보석 상자", "무료 상품"]
 
 def get_task_status_display(char_data):
     def checkbox(val): return "☑" if val else "☐"
-    daily = (
+    return (
+        "```\n"
+        "┌─────────────┐┌─────────────┐\n"
         f"  {checkbox(char_data['요일 던전'])} 요일 던전     {checkbox(char_data['필드 보스'])} 필드 보스\n"
         f"  {checkbox(char_data['심층 던전'])} 심층 던전     {checkbox(char_data['어비스'])} 어비스\n"
         f"  검은 구멍 {char_data['검은 구멍']}/3   {checkbox(char_data['레이드'])} 레이드\n"
         f"  결계 {char_data['결계']}/2\n"
-        f"  망령의 탑 {char_data['망령의 탑']}/5"
-    )
-    shop = f"    {checkbox(char_data['보석 상자'])} 보석 상자 　{checkbox(char_data['무료 상품'])} 무료 상품"
-    return (
-        "```\n"
-        "┌─────────────┐┌─────────────┐\n"
-        f"{daily}\n"
+        f"  망령의 탑 {char_data['망령의 탑']}/5\n"
         "└─────────────┘└─────────────┘\n"
         "┌────────────────────────────┐\n"
-        f"{shop}\n"
+        f"    {checkbox(char_data['보석 상자'])} 보석 상자 　{checkbox(char_data['무료 상품'])} 무료 상품\n"
         "└────────────────────────────┘\n"
         "```"
     )
@@ -108,19 +108,29 @@ class PageView(View):
             elif custom_id == "next":
                 self.page = (self.page + 1) % len(self.user_data[self.user_id]["data"])
             else:
-                current_char = list(self.user_data[self.user_id]["data"].keys())[self.page]
                 task = custom_id.split("|")[1]
-                char_data = self.user_data[self.user_id]["data"][current_char]
-                if task in count_tasks:
-                    char_data[task] = (char_data[task] - 1) if char_data[task] > 0 else count_tasks[task]
-                elif task in ["보석 상자", "무료 상품"]:
-                    new_val = not char_data[task]
-                    for uid in self.user_data:
-                        for char in self.user_data[uid]["data"]:
-                            self.user_data[uid]["data"][char][task] = new_val
+                if task == "on":
+                    self.user_data[self.user_id]["alert_enabled"] = True
+                elif task == "off":
+                    self.user_data[self.user_id]["alert_enabled"] = False
                 else:
-                    char_data[task] = not char_data[task]
-                save_user_data(self.user_id, self.user_data[self.user_id]["data"], self.user_data[self.user_id]["last_msg_id"])
+                    current_char = list(self.user_data[self.user_id]["data"].keys())[self.page]
+                    char_data = self.user_data[self.user_id]["data"][current_char]
+                    if task in count_tasks:
+                        char_data[task] = (char_data[task] - 1) if char_data[task] > 0 else count_tasks[task]
+                    elif task in ["보석 상자", "무료 상품"]:
+                        new_val = not char_data[task]
+                        for uid in self.user_data:
+                            for char in self.user_data[uid]["data"]:
+                                self.user_data[uid]["data"][char][task] = new_val
+                    else:
+                        char_data[task] = not char_data[task]
+                save_user_data(
+                    self.user_id,
+                    self.user_data[self.user_id]["data"],
+                    self.user_data[self.user_id]["last_msg_id"],
+                    self.user_data[self.user_id].get("alert_enabled", True)
+                )
             self.update_buttons()
             await self.update(interaction)
         button.callback = callback
@@ -145,13 +155,12 @@ class PageView(View):
             style = discord.ButtonStyle.danger if not self.user_data[self.user_id]["data"][first_char][task] else discord.ButtonStyle.secondary
             self.add_item(self.create_button(task, style, f"bin|{task}", 3))
 
-    async def update(self, interaction: discord.Interaction):
-        current_char = list(self.user_data[self.user_id]["data"].keys())[self.page]
-        now = datetime.now(korea).strftime("[%Y/%m/%d]")
-        desc = get_task_status_display(self.user_data[self.user_id]["data"][current_char])
-        await interaction.response.edit_message(content=f"{now} {current_char}\n{desc}", view=self)
+        is_enabled = self.user_data[self.user_id].get("alert_enabled", True)
+        apply_style = discord.ButtonStyle.success if is_enabled else discord.ButtonStyle.secondary
+        remove_style = discord.ButtonStyle.secondary if is_enabled else discord.ButtonStyle.success
+        self.add_item(self.create_button("알리미 적용", apply_style, "alert|on", 4))
+        self.add_item(self.create_button("알리미 해제", remove_style, "alert|off", 4))
 
-# 🌟 봇 설정
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
@@ -173,7 +182,7 @@ async def send_or_update_dm(user: discord.User, uid, user_data):
 
     new_msg = await user.send(content=content, view=view)
     user_data[uid]["last_msg_id"] = str(new_msg.id)
-    save_user_data(uid, user_data[uid]["data"], new_msg.id)
+    save_user_data(uid, user_data[uid]["data"], new_msg.id, user_data[uid].get("alert_enabled", True))
 
 @tree.command(name="숙제", description="숙제 현황을 보여줍니다.")
 async def 숙제(interaction: discord.Interaction):
@@ -192,7 +201,7 @@ async def 추가(interaction: discord.Interaction, 닉네임: str):
     uid = str(interaction.user.id)
     all_data = load_all_user_data()
     if uid not in all_data:
-        all_data[uid] = {"data": {}, "last_msg_id": None}
+        all_data[uid] = {"data": {}, "last_msg_id": None, "alert_enabled": True}
     if 닉네임 in all_data[uid]["data"]:
         await interaction.response.send_message("이미 존재하는 캐릭터입니다.", ephemeral=True)
         return
@@ -222,47 +231,54 @@ async def 목록(interaction: discord.Interaction):
     char_list = "\n".join(f"- {name}" for name in all_data[uid]["data"])
     await interaction.response.send_message(f"📋 현재 등록된 캐릭터:\n{char_list}", ephemeral=True)
 
-@commands.Cog.listener()
-async def on_ready():
-    print(f"✅ 로그인됨: {bot.user}")
+@tasks.loop(minutes=1)
+async def alert_checker():
+    now = datetime.now(korea)
+    if now.minute != 55:
+        return
+    all_data = load_all_user_data()
+    for uid, user in all_data.items():
+        if not user.get("alert_enabled", True):
+            continue
+        try:
+            user_obj = await bot.fetch_user(int(uid))
+            msg = await user_obj.send(f"🌀 {now.hour+1}시 결계/필드보스 알림입니다!")
+        except Exception as e:
+            print(f"❌ {uid}에게 DM 실패: {e}")
+
+@tasks.loop(minutes=1)
+async def reset_checker():
+    now = datetime.now(korea)
+    if now.hour == 6 and now.minute == 0:
+        all_data = load_all_user_data()
+        for uid in all_data:
+            for char in all_data[uid]["data"].values():
+                for task in daily_tasks:
+                    char[task] = False if task in binary_tasks else count_tasks[task]
+                for task in shop_tasks:
+                    char[task] = False
+                if now.weekday() == 0:
+                    for task in weekly_tasks:
+                        char[task] = False
+            save_user_data(uid, all_data[uid]["data"], all_data[uid]["last_msg_id"], all_data[uid]["alert_enabled"])
+        print("✅ 숙제 리셋 완료!")
 
 @bot.event
 async def on_ready():
     create_table()
     if not reset_checker.is_running():
         reset_checker.start()
-    print("✅ 봇 준비 완료!")
+    if not alert_checker.is_running():
+        alert_checker.start()
+    print(f\"✅ 봇 시작됨: {bot.user}\")
 
-@tasks.loop(minutes=1)
-async def reset_checker():
-    try:
-        now = datetime.now(korea)
-        if now.hour == 6 and now.minute == 0:
-            all_data = load_all_user_data()
-            for uid in all_data:
-                for char in all_data[uid]["data"].values():
-                    for task in daily_tasks:
-                        char[task] = False if task in binary_tasks else count_tasks[task]
-                    for task in shop_tasks:
-                        char[task] = False
-                    if now.weekday() == 0:
-                        for task in weekly_tasks:
-                            char[task] = False
-                save_user_data(uid, all_data[uid]["data"], all_data[uid]["last_msg_id"])
-            print("✅ 숙제 리셋 완료!")
-    except Exception as e:
-        print(f"❌ 리셋 중 오류 발생: {e}")
-
-# 전역 에러 핸들러
 @bot.event
 async def on_error(event, *args, **kwargs):
-    print(f"❌ 전역 이벤트 에러: {event} / {args} / {kwargs}")
+    print(f\"❌ 전역 이벤트 에러: {event} / {args} / {kwargs}\")
 
 def handle_exception(loop, context):
-    msg = context.get("exception", context["message"])
-    print(f"❌ asyncio 루프 예외 발생: {msg}")
+    msg = context.get(\"exception\", context[\"message\"])\n    print(f\"❌ asyncio 예외: {msg}\")
 
 asyncio.get_event_loop().set_exception_handler(handle_exception)
 
-# 실행
 bot.run(TOKEN)

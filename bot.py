@@ -28,15 +28,24 @@ def get_conn():
 def create_table():
     with get_conn() as conn:
         cur = conn.cursor()
+
+        # 테이블이 없다면 생성
         cur.execute("""
             CREATE TABLE IF NOT EXISTS user_data (
                 user_id TEXT PRIMARY KEY,
                 data TEXT NOT NULL,
                 last_msg_id TEXT,
-                alert_enabled INTEGER DEFAULT 1,
-                alert_msg_id TEXT
+                alert_enabled INTEGER DEFAULT 1
             );
         """)
+
+        # 🌟 alert_msg_id 컬럼이 없다면 추가
+        try:
+            cur.execute("ALTER TABLE user_data ADD COLUMN alert_msg_id TEXT;")
+        except sqlite3.OperationalError:
+            # 이미 존재하면 무시
+            pass
+
         conn.commit()
 
 def load_all_user_data():

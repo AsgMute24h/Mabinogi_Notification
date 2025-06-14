@@ -154,9 +154,15 @@ class PageView(View):
             self.add_item(self.create_button(task, style, f"bin|{task}", 3))
 
         is_enabled = self.user_data[self.user_id].get("alert_enabled", True)
-        label = "🔔 알림 설정" if is_enabled else "🔕 알림 해제"
+        label = "🔔" if is_enabled else "🔕"
         style = discord.ButtonStyle.success if is_enabled else discord.ButtonStyle.secondary
         self.add_item(self.create_button(label, style, "alert|toggle", 4))
+        
+    async def update(self, interaction: discord.Interaction):
+        current_char = list(self.user_data[self.user_id]["data"].keys())[self.page]
+        now = datetime.now(korea).strftime("[%Y/%m/%d]")
+        desc = get_task_status_display(self.user_data[self.user_id]["data"][current_char])
+        await interaction.response.edit_message(content=f"{now} {current_char}\n{desc}", view=self)
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -190,7 +196,6 @@ async def 숙제(interaction: discord.Interaction):
         await interaction.response.send_message("❌ 등록된 캐릭터가 없습니다. `/추가` 명령으로 먼저 등록해 주세요.", ephemeral=True)
         return
     await send_or_update_dm(interaction.user, uid, all_data)
-    await interaction.response.send_message("📬 DM으로 숙제를 전송했습니다!", ephemeral=True)
 
 @tree.command(name="추가", description="캐릭터를 추가합니다.")
 @discord.app_commands.describe(닉네임="캐릭터 이름")

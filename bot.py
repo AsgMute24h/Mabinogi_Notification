@@ -270,14 +270,14 @@ async def on_ready():
         reset_checker.start()
     if not alert_checker.is_running():
         alert_checker.start()
-    print(f\"✅ 봇 시작됨: {bot.user}\")
+    print(f"✅ 봇 시작됨: {bot.user}")
 
 @bot.event
 async def on_error(event, *args, **kwargs):
-    print(f\"❌ 전역 이벤트 에러: {event} / {args} / {kwargs}\")
+    print(f"❌ 전역 이벤트 에러: {event} / {args} / {kwargs}")
 
 def handle_exception(loop, context):
-    msg = context.get(\"exception\", context[\"message\"])\n    print(f\"❌ asyncio 예외: {msg}\")
+    msg = context.get(\"exception\", context[\"message\"])\n    print(f"❌ asyncio 예외: {msg}")
 
 asyncio.get_event_loop().set_exception_handler(handle_exception)
 

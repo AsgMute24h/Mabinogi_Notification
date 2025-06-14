@@ -33,7 +33,8 @@ def create_table():
                 user_id TEXT PRIMARY KEY,
                 data TEXT NOT NULL,
                 last_msg_id TEXT,
-                alert_enabled INTEGER DEFAULT 1
+                alert_enabled INTEGER DEFAULT 1,
+                alert_msg_id TEXT
             );
         """)
         conn.commit()
@@ -41,27 +42,29 @@ def create_table():
 def load_all_user_data():
     with get_conn() as conn:
         cur = conn.cursor()
-        cur.execute("SELECT user_id, data, last_msg_id, alert_enabled FROM user_data;")
+        cur.execute("SELECT user_id, data, last_msg_id, alert_enabled, alert_msg_id FROM user_data;")
         rows = cur.fetchall()
         return {
             str(row[0]): {
                 "data": json.loads(row[1]),
                 "last_msg_id": row[2],
-                "alert_enabled": bool(row[3])
+                "alert_enabled": bool(row[3]),
+                "alert_msg_id": row[4]
             } for row in rows
         }
 
-def save_user_data(uid, data, last_msg_id=None, alert_enabled=True):
+def save_user_data(uid, data, last_msg_id=None, alert_enabled=True, alert_msg_id=None):
     with get_conn() as conn:
         cur = conn.cursor()
         cur.execute("""
-            INSERT INTO user_data (user_id, data, last_msg_id, alert_enabled)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO user_data (user_id, data, last_msg_id, alert_enabled, alert_msg_id)
+            VALUES (?, ?, ?, ?, ?)
             ON CONFLICT(user_id) DO UPDATE SET
                 data=excluded.data,
                 last_msg_id=excluded.last_msg_id,
-                alert_enabled=excluded.alert_enabled;
-        """, (uid, json.dumps(data, ensure_ascii=False), last_msg_id, int(alert_enabled)))
+                alert_enabled=excluded.alert_enabled,
+                alert_msg_id=excluded.alert_msg_id;
+        """, (uid, json.dumps(data, ensure_ascii=False), last_msg_id, int(alert_enabled), alert_msg_id))
         conn.commit()
 
     now_str = datetime.now(korea).strftime("%Y%m%d_%H%M%S")
@@ -241,6 +244,22 @@ async def 목록(interaction: discord.Interaction):
     char_list = "\n".join(f"- {name}" for name in all_data[uid]["data"])
     await interaction.response.send_message(f"📋 현재 등록된 캐릭터:\n{char_list}", ephemeral=True)
 
+@tree.command(name="삭제", description="기존에 받은 봇의 DM 메시지를 모두 삭제합니다. (최대 99개)")
+async def 삭제(interaction: discord.Interaction):
+    uid = str(interaction.user.id)
+    await interaction.response.send_message("🧹 이전 메시지를 정리 중입니다.", ephemeral=True)
+    
+    try:
+        channel = await interaction.user.create_dm()
+        deleted = 0
+        async for msg in channel.history(limit=99):  # 여기 limit을 99로 설정
+            if msg.author == bot.user:
+                await msg.delete()
+                deleted += 1
+        await interaction.followup.send(f"✅ {deleted}개의 메시지를 삭제했어요.", ephemeral=True)
+    except Exception as e:
+        await interaction.followup.send(f"❌ 삭제 중 오류 발생: {e}", ephemeral=True)
+
 @tasks.loop(minutes=1)
 async def alert_checker():
     now = datetime.now(korea)
@@ -265,12 +284,29 @@ async def alert_checker():
     headline = f"🔥 5분 뒤 {next_hour}시, 불길한 소환의 결계가 나타납니다!"
 
     all_data = load_all_user_data()
+    
     for uid, user in all_data.items():
         if not user.get("alert_enabled", True):
             continue
         try:
             user_obj = await bot.fetch_user(int(uid))
-            await user_obj.send(f"{headline}\n{boss_msg}")
+            
+            # 과거 메시지 삭제
+            if user.get("alert_msg_id"):
+                try:
+                    channel = await user_obj.create_dm()
+                    old_msg = await channel.fetch_message(int(user["alert_msg_id"]))
+                    await old_msg.delete()
+                except Exception as e:
+                    print(f"❌ {uid} 알림 메시지 삭제 실패: {e}")
+                    
+            # 새 메시지 전송
+            new_msg = await user_obj.send(f"{headline}\n{boss_msg}")
+            user["alert_msg_id"] = str(new_msg.id)
+            
+            # 저장
+            save_user_data(uid, user["data"], user["last_msg_id"], user["alert_enabled"], user["alert_msg_id"])
+
         except Exception as e:
             print(f"❌ {uid}에게 DM 실패: {e}")
 

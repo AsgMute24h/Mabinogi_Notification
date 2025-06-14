@@ -9,6 +9,7 @@ import asyncio
 import sqlite3
 from dotenv import load_dotenv
 import shutil
+import subprocess
 
 # 🌟 설정
 DB_PATH = "data.db"
@@ -292,12 +293,21 @@ async def reset_checker():
 @bot.event
 async def on_ready():
     create_table()
+
+    # 🌟 Termux에서 화면 꺼짐 방지 설정
+    try:
+        import subprocess
+        subprocess.run(["termux-wake-lock"])
+        print("✅ termux-wake-lock executed.")
+    except Exception as e:
+        print(f"❌ termux-wake-lock 실행 실패: {e}")
+
     if not reset_checker.is_running():
         reset_checker.start()
     if not alert_checker.is_running():
         alert_checker.start()
     print(f"✅ 봇 시작됨: {bot.user}")
-
+    
 @bot.event
 async def on_error(event, *args, **kwargs):
     print(f"❌ 전역 이벤트 에러: {event} / {args} / {kwargs}")

@@ -107,30 +107,28 @@ class PageView(View):
                 self.page = (self.page - 1) % len(self.user_data[self.user_id]["data"])
             elif custom_id == "next":
                 self.page = (self.page + 1) % len(self.user_data[self.user_id]["data"])
+            elif custom_id == "alert|toggle":
+                current = self.user_data[self.user_id].get("alert_enabled", True)
+                self.user_data[self.user_id]["alert_enabled"] = not current
             else:
                 task = custom_id.split("|")[1]
-                if task == "on":
-                    self.user_data[self.user_id]["alert_enabled"] = True
-                elif task == "off":
-                    self.user_data[self.user_id]["alert_enabled"] = False
+                current_char = list(self.user_data[self.user_id]["data"].keys())[self.page]
+                char_data = self.user_data[self.user_id]["data"][current_char]
+                if task in count_tasks:
+                    char_data[task] = (char_data[task] - 1) if char_data[task] > 0 else count_tasks[task]
+                elif task in ["보석 상자", "무료 상품"]:
+                    new_val = not char_data[task]
+                    for uid in self.user_data:
+                        for char in self.user_data[uid]["data"]:
+                            self.user_data[uid]["data"][char][task] = new_val
                 else:
-                    current_char = list(self.user_data[self.user_id]["data"].keys())[self.page]
-                    char_data = self.user_data[self.user_id]["data"][current_char]
-                    if task in count_tasks:
-                        char_data[task] = (char_data[task] - 1) if char_data[task] > 0 else count_tasks[task]
-                    elif task in ["보석 상자", "무료 상품"]:
-                        new_val = not char_data[task]
-                        for uid in self.user_data:
-                            for char in self.user_data[uid]["data"]:
-                                self.user_data[uid]["data"][char][task] = new_val
-                    else:
-                        char_data[task] = not char_data[task]
-                save_user_data(
-                    self.user_id,
-                    self.user_data[self.user_id]["data"],
-                    self.user_data[self.user_id]["last_msg_id"],
-                    self.user_data[self.user_id].get("alert_enabled", True)
-                )
+                    char_data[task] = not char_data[task]
+            save_user_data(
+                self.user_id,
+                self.user_data[self.user_id]["data"],
+                self.user_data[self.user_id]["last_msg_id"],
+                self.user_data[self.user_id].get("alert_enabled", True)
+            )
             self.update_buttons()
             await self.update(interaction)
         button.callback = callback
@@ -156,10 +154,9 @@ class PageView(View):
             self.add_item(self.create_button(task, style, f"bin|{task}", 3))
 
         is_enabled = self.user_data[self.user_id].get("alert_enabled", True)
-        apply_style = discord.ButtonStyle.success if is_enabled else discord.ButtonStyle.secondary
-        remove_style = discord.ButtonStyle.secondary if is_enabled else discord.ButtonStyle.success
-        self.add_item(self.create_button("알리미 적용", apply_style, "alert|on", 4))
-        self.add_item(self.create_button("알리미 해제", remove_style, "alert|off", 4))
+        label = "🔔 알림 설정" if is_enabled else "🔕 알림 해제"
+        style = discord.ButtonStyle.success if is_enabled else discord.ButtonStyle.secondary
+        self.add_item(self.create_button(label, style, "alert|toggle", 4))
 
 intents = discord.Intents.default()
 intents.message_content = True

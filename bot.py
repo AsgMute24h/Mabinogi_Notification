@@ -333,8 +333,18 @@ async def reset_checker():
                 if now.weekday() == 0:
                     for task in weekly_tasks:
                         char[task] = False
+
+            # ✅ 초기화된 데이터 저장
             save_user_data(uid, all_data[uid]["data"], all_data[uid]["last_msg_id"], all_data[uid]["alert_enabled"])
-        print("✅ 숙제 리셋 완료!")
+
+            # ✅ 메시지 갱신
+            try:
+                user = await bot.fetch_user(int(uid))
+                await send_or_update_dm(user, uid, all_data)
+            except Exception as e:
+                print(f"❌ {uid} 초기화 후 DM 갱신 실패: {e}")
+
+        print("✅ 숙제 리셋 및 DM 갱신 완료!")
 
 @bot.event
 async def on_ready():

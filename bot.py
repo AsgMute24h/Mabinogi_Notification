@@ -10,6 +10,7 @@ import sqlite3
 from dotenv import load_dotenv
 import shutil
 import subprocess
+import asyncio
 
 # 🌟 설정
 DB_PATH = "data.db"
@@ -202,7 +203,7 @@ async def 숙제(interaction: discord.Interaction):
     await interaction.response.send_message("📝 숙제 현황이 전송되었습니다.", ephemeral=True)
 
     # ✅ 이후 DM 전송
-    await send_or_update_dm(interaction.user, uid, all_data)
+    asyncio.create_task(send_or_update_dm(interaction.user, uid, all_data))
 
 @tree.command(name="추가", description="캐릭터를 추가합니다.")
 @discord.app_commands.describe(닉네임="캐릭터 이름")

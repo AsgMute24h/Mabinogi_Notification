@@ -10,7 +10,6 @@ import sqlite3
 from dotenv import load_dotenv
 import shutil
 import subprocess
-import asyncio
 
 # 🌟 설정
 DB_PATH = "data.db"
@@ -19,6 +18,8 @@ ALERT_FILE = "alert_config.json"
 korea = pytz.timezone("Asia/Seoul")
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
+last_alert_minute = None
+alert_checker_started = False
 
 # 🌟 DB 연결
 os.makedirs(BACKUP_DIR, exist_ok=True)
@@ -263,13 +264,11 @@ async def 삭제(interaction: discord.Interaction):
         deleted = 0
         async for msg in channel.history(limit=99):  # 여기 limit을 99로 설정
             if msg.author == bot.user:
-                await msg.delete()
+                await msg.delete(0.3)
                 deleted += 1
         await interaction.followup.send(f"✅ {deleted}개의 메시지를 삭제했어요.", ephemeral=True)
     except Exception as e:
         await interaction.followup.send(f"❌ 삭제 중 오류 발생: {e}", ephemeral=True)
-
-last_alert_minute = None
 
 @tasks.loop(minutes=1)
 async def alert_checker():
@@ -356,7 +355,10 @@ async def reset_checker():
 
 @bot.event
 async def on_ready():
+    global alert_checker_started
+
     create_table()
+
     try:
         import subprocess
         subprocess.run(["termux-wake-lock"])
@@ -366,15 +368,21 @@ async def on_ready():
 
     # 명령어 글로벌 등록
     try:
-        synced = await tree.sync()  # 🌍 모든 서버에 글로벌로 등록
+        synced = await tree.sync()
         print(f"✅ 글로벌 커맨드 동기화 완료: {len(synced)}개 명령어")
     except Exception as e:
         print(f"❌ 글로벌 명령어 동기화 실패: {e}")
 
+    # 알림 루프 중복 실행 방지
+    if not alert_checker_started:
+        alert_checker.start()
+        alert_checker_started = True
+        print("✅ alert_checker 시작됨")
+
     if not reset_checker.is_running():
         reset_checker.start()
-    if not alert_checker.is_running():
-        alert_checker.start()
+        print("✅ reset_checker 시작됨")
+
     print(f"✅ 봇 시작됨: {bot.user}")
     
 @bot.event

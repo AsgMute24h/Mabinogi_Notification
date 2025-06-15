@@ -324,12 +324,13 @@ async def alert_checker():
             user_obj = await bot.fetch_user(int(uid))
             channel = await user_obj.create_dm()
 
-            # ✅ 과거 메시지 모두 삭제 (최대 5개까지 탐색)
-            deleted = 0
-            async for msg in channel.history(limit=5):
-                if msg.author == bot.user:
-                    await msg.delete()
-                    deleted += 1
+            # ✅ 기존 알림 메시지만 삭제
+            if user.get("alert_msg_id"):
+                try:
+                    old_msg = await channel.fetch_message(int(user["alert_msg_id"]))
+                    await old_msg.delete()
+                except Exception as e:
+                    print(f"❌ {uid} 알림 메시지 삭제 실패: {e}")
 
             # ✅ 새 메시지 전송
             new_msg = await channel.send(f"{headline}\n{boss_msg}")

@@ -269,11 +269,19 @@ async def 삭제(interaction: discord.Interaction):
     except Exception as e:
         await interaction.followup.send(f"❌ 삭제 중 오류 발생: {e}", ephemeral=True)
 
+last_alert_minute = None
+
 @tasks.loop(minutes=1)
 async def alert_checker():
+    global last_alert_minute
     now = datetime.now(korea)
     if now.minute != 55:
         return
+
+    if last_alert_minute == now.minute:
+        return  # 이미 이 분에 한 번 알림을 보냈음
+
+    last_alert_minute = now.minute
 
     field_boss_hours = [11, 17, 19, 21]
     next_hour = (now.hour + 1) % 24

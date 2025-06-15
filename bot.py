@@ -18,7 +18,7 @@ ALERT_FILE = "alert_config.json"
 korea = pytz.timezone("Asia/Seoul")
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
-last_alert_minute = None
+last_alert_time = None
 alert_checker_started = False
 
 # 🌟 DB 연결
@@ -264,7 +264,7 @@ async def 삭제(interaction: discord.Interaction):
         deleted = 0
         async for msg in channel.history(limit=99):  # 여기 limit을 99로 설정
             if msg.author == bot.user:
-                await msg.delete(0.3)
+                await msg.delete()
                 deleted += 1
         await interaction.followup.send(f"✅ {deleted}개의 메시지를 삭제했어요.", ephemeral=True)
     except Exception as e:
@@ -272,15 +272,17 @@ async def 삭제(interaction: discord.Interaction):
 
 @tasks.loop(minutes=1)
 async def alert_checker():
-    global last_alert_minute
+    global last_alert_time
     now = datetime.now(korea)
+
     if now.minute != 55:
         return
 
-    if last_alert_minute == now.minute:
-        return  # 이미 이 분에 한 번 알림을 보냈음
+    # 🔐 중복 방지 로직 개선
+    if last_alert_time and (now - last_alert_time).seconds < 50:
+        return  # 지난 알림과 50초 이내면 중복으로 간주하고 패스
 
-    last_alert_minute = now.minute
+    last_alert_time = now  # 마지막 알림 시간 업데이트
 
     field_boss_hours = [11, 17, 19, 21]
     next_hour = (now.hour + 1) % 24

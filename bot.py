@@ -125,6 +125,12 @@ class PageView(View):
             elif custom_id == "alert|toggle":
                 current = self.user_data[self.user_id].get("alert_enabled", True)
                 self.user_data[self.user_id]["alert_enabled"] = not current
+                save_user_data(
+                    self.user_id,
+                    self.user_data[self.user_id]["data"],
+                    self.user_data[self.user_id]["last_msg_id"],
+                    self.user_data[self.user_id]["alert_enabled"]
+                )
             else:
                 task = custom_id.split("|")[1]
                 current_char = list(self.user_data[self.user_id]["data"].keys())[self.page]
@@ -185,6 +191,9 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 tree = bot.tree
 
 async def send_or_update_dm(user: discord.User, uid, user_data):
+    if not user_data[uid]["data"]:
+        return  # 🔒 캐릭터가 없는 경우 메시지를 보내지 않음
+        
     current_char = list(user_data[uid]["data"].keys())[0]
     desc = get_task_status_display(user_data[uid]["data"][current_char])
     content = f"[{datetime.now(korea).strftime('%Y/%m/%d')}] {current_char}\n{desc}"
@@ -257,16 +266,20 @@ async def 목록(interaction: discord.Interaction):
 @tree.command(name="삭제", description="기존에 받은 봇의 DM 메시지를 모두 삭제합니다. (최대 99개)")
 async def 삭제(interaction: discord.Interaction):
     uid = str(interaction.user.id)
+
+    # 반드시 첫 응답은 여기에!
     await interaction.response.send_message("🧹 이전 메시지를 정리 중입니다.", ephemeral=True)
-    
+
     try:
         channel = await interaction.user.create_dm()
         deleted = 0
-        async for msg in channel.history(limit=99):  # 여기 limit을 99로 설정
+        async for msg in channel.history(limit=99):
             if msg.author == bot.user:
                 await msg.delete()
                 deleted += 1
+
         await interaction.followup.send(f"✅ {deleted}개의 메시지를 삭제했어요.", ephemeral=True)
+
     except Exception as e:
         await interaction.followup.send(f"❌ 삭제 중 오류 발생: {e}", ephemeral=True)
 
@@ -278,12 +291,12 @@ async def alert_checker():
     if now.minute != 55:
         return
 
-    # 🔐 중복 방지 로직 개선
-    if last_alert_time and (now - last_alert_time).seconds < 50:
-        return  # 지난 알림과 50초 이내면 중복으로 간주하고 패스
+    # ⛔ 중복 전송 방지 (정확하게 60초 기준)
+    if last_alert_time and (now - last_alert_time).total_seconds() < 50:
+        return
+    last_alert_time = now
 
-    last_alert_time = now  # 마지막 알림 시간 업데이트
-
+    # 메시지 내용 생성
     field_boss_hours = [11, 17, 19, 21]
     next_hour = (now.hour + 1) % 24
 
@@ -302,27 +315,27 @@ async def alert_checker():
     headline = f"🔥 5분 뒤 {next_hour}시, 불길한 소환의 결계가 나타납니다!"
 
     all_data = load_all_user_data()
-    
+
     for uid, user in all_data.items():
         if not user.get("alert_enabled", True):
             continue
+
         try:
             user_obj = await bot.fetch_user(int(uid))
-            
-            # 과거 메시지 삭제
-            if user.get("alert_msg_id"):
-                try:
-                    channel = await user_obj.create_dm()
-                    old_msg = await channel.fetch_message(int(user["alert_msg_id"]))
-                    await old_msg.delete()
-                except Exception as e:
-                    print(f"❌ {uid} 알림 메시지 삭제 실패: {e}")
-                    
-            # 새 메시지 전송
-            new_msg = await user_obj.send(f"{headline}\n{boss_msg}")
+            channel = await user_obj.create_dm()
+
+            # ✅ 과거 메시지 모두 삭제 (최대 5개까지 탐색)
+            deleted = 0
+            async for msg in channel.history(limit=5):
+                if msg.author == bot.user:
+                    await msg.delete()
+                    deleted += 1
+
+            # ✅ 새 메시지 전송
+            new_msg = await channel.send(f"{headline}\n{boss_msg}")
             user["alert_msg_id"] = str(new_msg.id)
-            
-            # 저장
+
+            # ✅ 저장
             save_user_data(uid, user["data"], user["last_msg_id"], user["alert_enabled"], user["alert_msg_id"])
 
         except Exception as e:

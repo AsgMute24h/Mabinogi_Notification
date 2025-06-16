@@ -336,12 +336,12 @@ async def alert_checker():
             # ✅ 새 메시지 전송
             new_msg = await channel.send(f"{headline}\n{boss_msg}")
             new_msg_id = str(new_msg.id)
+            
+            # ✅ 메모리 상에도 반영
+            user["alert_msg_id"] = new_msg_id
 
             # ✅ 저장
             save_user_data(uid, user["data"], user["last_msg_id"], user["alert_enabled"], new_msg_id)
-
-            # ✅ 메모리 상에도 반영
-            user["alert_msg_id"] = new_msg_id
 
         except Exception as e:
             print(f"❌ {uid}에게 DM 실패: {e}")

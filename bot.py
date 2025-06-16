@@ -293,6 +293,7 @@ async def alert_checker():
 
     # ⛔ 중복 전송 방지 (정확하게 60초 기준)
     if last_alert_time and (now - last_alert_time).total_seconds() < 50:
+        print("🔁 중복 알림 방지됨")
         return
     last_alert_time = now
 
@@ -334,10 +335,13 @@ async def alert_checker():
 
             # ✅ 새 메시지 전송
             new_msg = await channel.send(f"{headline}\n{boss_msg}")
-            user["alert_msg_id"] = str(new_msg.id)
+            new_msg_id = str(new_msg.id)
 
             # ✅ 저장
-            save_user_data(uid, user["data"], user["last_msg_id"], user["alert_enabled"], user["alert_msg_id"])
+            save_user_data(uid, user["data"], user["last_msg_id"], user["alert_enabled"], new_msg_id)
+
+            # ✅ 메모리 상에도 반영
+            user["alert_msg_id"] = new_msg_id
 
         except Exception as e:
             print(f"❌ {uid}에게 DM 실패: {e}")

@@ -292,7 +292,7 @@ async def alert_checker():
         return
 
     # ⛔ 중복 전송 방지 (정확하게 60초 기준)
-    if last_alert_time and (now - last_alert_time).total_seconds() < 50:
+    if last_alert_time and (now - last_alert_time).total_seconds() < 60:
         print("🔁 중복 알림 방지됨")
         return
     last_alert_time = now
@@ -324,24 +324,25 @@ async def alert_checker():
         try:
             user_obj = await bot.fetch_user(int(uid))
             channel = await user_obj.create_dm()
-
-            # ✅ 기존 알림 메시지만 삭제
-            if user.get("alert_msg_id"):
-                try:
-                    old_msg = await channel.fetch_message(int(user["alert_msg_id"]))
-                    await old_msg.delete()
-                except Exception as e:
-                    print(f"❌ {uid} 알림 메시지 삭제 실패: {e}")
-
-            # ✅ 새 메시지 전송
-            new_msg = await channel.send(f"{headline}\n{boss_msg}")
-            new_msg_id = str(new_msg.id)
             
-            # ✅ 메모리 상에도 반영
-            user["alert_msg_id"] = new_msg_id
+        # ✅ 기존 알림 메시지 삭제 (🔥로 시작하는 텍스트만)
+        try:
+            async for msg in channel.history(limit=20):  # 필요시 limit 늘릴 수 있음
+                if msg.author == bot.user and msg.content.startswith("🔥"):
+                    await msg.delete()
+                    print(f"🧹 삭제됨: {msg.id}")
+        except Exception as e:
+            print(f"❌ {uid} 메시지 삭제 실패: {e}")
 
-            # ✅ 저장
-            save_user_data(uid, user["data"], user["last_msg_id"], user["alert_enabled"], new_msg_id)
+        # ✅ 새 메시지 전송
+        new_msg = await channel.send(f"{headline}\n{boss_msg}")
+        new_msg_id = str(new_msg.id)
+            
+        # ✅ 메모리 상에도 반영
+        user["alert_msg_id"] = new_msg_id
+
+        # ✅ 저장
+        save_user_data(uid, user["data"], user["last_msg_id"], user["alert_enabled"], new_msg_id)
 
         except Exception as e:
             print(f"❌ {uid}에게 DM 실패: {e}")
